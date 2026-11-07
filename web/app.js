@@ -37,7 +37,7 @@ const WIDGETS = [['weather', 'Weather'], ['prayer', 'Prayer times'], ['moon', 'M
 const MENU = [
   ['wifi', 'Wi-Fi', 'wifi'], ['bt', 'Bluetooth', 'bt'], ['wall', 'Wallpaper', 'image'], ['saver', 'Screensaver', 'saver'],
   ['clock', 'Clock', 'clock'], ['widgets', 'Home widgets', 'grid'], ['prayer', 'Location & prayer', 'pin'], ['yt', 'YouTube', 'play'],
-  ['remote', 'Phone remote', 'phone'], ['update', 'Update', 'update'], ['power', 'Power', 'power']];
+  ['apps', 'Arrange apps', 'grid'], ['remote', 'Phone remote', 'phone'], ['update', 'Updates', 'update'], ['power', 'Power', 'power']];
 
 let S = {}, apps = [], walls = [], bt = [], wifi = [], info = {}, layer = 'home', lastHome = null, idle = Date.now();
 let sheetSec = null, sheetFrom = 'panel', busy = {};
@@ -49,7 +49,7 @@ function tile(o, i) {
   b.innerHTML = `<span class="lg" style="--m:url(/s/icons/${o.logo}.svg)"></span>`;
   b.onfocus = () => hero(o, b);
   b.onmouseenter = () => layer === 'home' && b.focus({ preventScroll: true });
-  b.onclick = () => launch(o, b);
+  b.onclick = () => layer === 'arrange' ? null : launch(o, b);
   return b;
 }
 function hero(o, b) {
@@ -75,45 +75,59 @@ function tween(el, from, to, ms) {
   el.style.transition = `transform ${ms}ms ${EASE},opacity ${Math.min(ms, 260)}ms ease`; Object.assign(el.style, to);
 }
 let launching = false;
+/* app order: saved as a list of names in settings; new apps go at the end */
+function ordered(list) {
+  const order = S.appOrder || [], pos = n => { const i = order.indexOf(n); return i < 0 ? 1e3 : i; };
+  return list.map((a, i) => [a, i]).sort((x, y) => pos(x[0].name) - pos(y[0].name) || x[1] - y[1]).map(x => x[0]);
+}
+function renderTiles() {
+  const focused = document.activeElement?.closest?.('#apps .tile') ? apps[[...$('#apps').children].indexOf(document.activeElement)]?.name : null;
+  apps = ordered(apps);
+  $('#apps').innerHTML = ''; apps.forEach((a, i) => $('#apps').append(tile(a, i)));
+  const i = focused ? apps.findIndex(a => a.name === focused) : -1;
+  if (i >= 0 && layer === 'home') $('#apps').children[i].focus({ preventScroll: true });
+}
+let picked = null;
+function startArrange() {
+  closePanel(); layer = 'arrange'; picked = null; document.body.classList.add('arranging');
+  $('#arrangeBar').classList.add('on');
+  ($('#apps .tile'))?.focus({ preventScroll: true });
+}
+function arrangeKey(e) {
+  const k = e.key, a = document.activeElement, tiles = [...$('#apps').children], i = tiles.indexOf(a);
+  const back = k === 'Escape' || k === 'BrowserBack' || (e.altKey && k === 'ArrowLeft') || k === 'Backspace';
+  e.preventDefault();
+  if (back) return endArrange();
+  if (k === 'Enter') { picked = picked ? null : a; tiles.forEach(t => t.classList.toggle('lift', t === picked)); return; }
+  if (k !== 'ArrowLeft' && k !== 'ArrowRight') return;
+  const j = i + (k === 'ArrowLeft' ? -1 : 1);
+  if (i < 0) return tiles[0]?.focus({ preventScroll: true });
+  if (j < 0 || j >= tiles.length) return;
+  if (picked) {   // move the lifted app one place
+    const [it] = apps.splice(i, 1); apps.splice(j, 0, it);
+    k === 'ArrowLeft' ? tiles[j].before(a) : tiles[j].after(a);
+    [...$('#apps').children].forEach((t, n) => t.style.setProperty('--i', n));
+    a.focus({ preventScroll: true }); slideRow(a);
+  } else tiles[j].focus({ preventScroll: true });
+}
+function endArrange() {
+  layer = 'home'; picked = null; document.body.classList.remove('arranging');
+  $('#arrangeBar').classList.remove('on');
+  document.querySelectorAll('#apps .tile').forEach(t => t.classList.remove('lift'));
+  S.appOrder = apps.map(a => a.name); api('settings', { appOrder: S.appOrder }); toast('App order saved');
+}
 function launch(o, b) {
   if (launching) return; launching = true;
   const L = $('#launch'), G = $('#launchLogo'), r = b.getBoundingClientRect(), lr = b.querySelector('.lg').getBoundingClientRect();
-  try { sessionStorage.setItem('lumen.app', JSON.stringify({ name: o.name, a: o.a, logo: o.logo })); } catch { }
   G.style.setProperty('--m', `url(/s/icons/${o.logo}.svg)`);
   tween(L, { background: o.a, opacity: 1, transform: boxXf(r) }, { transform: 'none' }, 460);
   tween(G, { opacity: 0, transform: logoXf(lr) }, { opacity: 1, transform: 'none' }, 460);
   setTimeout(() => location.href = o.url, 600);
 }
-function coverFromApp() {   // coming back from an app: start fully covered by its colour and logo
-  let s = null; try { s = JSON.parse(sessionStorage.getItem('lumen.app')); sessionStorage.removeItem('lumen.app'); } catch { }
-  if (!s) return null;
-  const L = $('#launch'), G = $('#launchLogo');
-  G.style.setProperty('--m', `url(/s/icons/${s.logo}.svg)`);
-  tween(L, {}, { background: s.a, opacity: 1, transform: 'none' }, 0);
-  tween(G, {}, { opacity: 1, transform: 'none' }, 0);
-  document.body.classList.add('returning');
-  return s;
-}
-function closeAnim(s) {
-  const L = $('#launch'), G = $('#launchLogo'), b = [...document.querySelectorAll('#apps .tile')][apps.findIndex(a => a.name === s.name)];
-  const done = () => { L.style.transition = G.style.transition = 'opacity .2s ease'; L.style.opacity = G.style.opacity = 0;
-    setTimeout(() => document.body.classList.remove('returning'), 220); launching = false; };
-  if (!b) { (document.querySelector('#apps .tile'))?.focus({ preventScroll: true }); return done(); }
-  const track = b.parentElement; track.style.transition = 'none';
-  b.focus({ preventScroll: true });
-  const r = b.getBoundingClientRect(), lr = b.querySelector('.lg').getBoundingClientRect();
-  requestAnimationFrame(() => {
-    track.style.transition = '';
-    tween(L, {}, { transform: boxXf(r) }, 420);
-    tween(G, {}, { transform: logoXf(lr) }, 420);
-    setTimeout(done, 380);
-  });
-}
-addEventListener('pageshow', e => {   // back/forward cache: the page was kept, so replay the close animation
+addEventListener('pageshow', e => {   // back/forward cache kept the page: just clear the opening animation
   if (!e.persisted) return;
   launching = false;
-  const s = coverFromApp();
-  if (s) closeAnim(s); else { $('#launch').style.opacity = 0; $('#launchLogo').style.opacity = 0; }
+  for (const el of [$('#launch'), $('#launchLogo')]) { el.style.transition = 'none'; el.style.opacity = 0; }
 });
 
 function homeMove(d) {
@@ -131,6 +145,7 @@ const typing = () => document.activeElement?.tagName === 'INPUT';
 addEventListener('keydown', e => {
   idle = Date.now();
   if (!$('#saver').classList.contains('hidden')) { e.preventDefault(); return hideSaver(); }
+  if (layer === 'arrange') return arrangeKey(e);
   const back = e.key === 'Escape' || e.key === 'BrowserBack' || (e.altKey && e.key === 'ArrowLeft') || (e.key === 'Backspace' && !typing());
   if (back) { e.preventDefault(); return goBack(); }
   const d = { ArrowUp: 'u', ArrowDown: 'd', ArrowLeft: 'l', ArrowRight: 'r' }[e.key];
@@ -180,7 +195,8 @@ function summary(k) {
   const act = wifi.find(n => n.active);
   return { wifi: act ? act.ssid : 'Not connected', wall: S.wallpaper === 'none' ? 'None' : S.wallpaper.startsWith('img:') ? 'Photo' : cap(S.wallpaper),
     saver: S.saverOn ? cap(S.screensaver) : 'Off', clock: S.clock12 ? '12-hour' : '24-hour', prayer: S.city,
-    widgets: WIDGETS.filter(([w]) => S.widgets?.[w] !== false).length + ' on', update: (info.version || '').split(' · ')[0] }[k] || '';
+    widgets: WIDGETS.filter(([w]) => S.widgets?.[w] !== false).length + ' on', update: (info.version || '').split(' · ')[1] || '',
+    apps: apps.length + ' apps' }[k] || '';
 }
 function openPanel() {
   if (layer === 'home') lastHome = document.activeElement;
@@ -197,7 +213,7 @@ function closePanel() {
 }
 $('#settings').addEventListener('click', e => {
   const b = e.target.closest('[data-menu]'); if (!b) return;
-  b.dataset.menu === 'close' ? closePanel() : openSheet(b.dataset.menu);
+  b.dataset.menu === 'close' ? closePanel() : b.dataset.menu === 'apps' ? startArrange() : openSheet(b.dataset.menu);
 });
 
 /* ================= settings popups ================= */
@@ -233,11 +249,23 @@ const SHEETS = {
   yt: () => `<input class="txt" id="ytKey" placeholder="YouTube Data API key" value="${esc(S.ytKey)}"><div class="opts">${o('yt:save', 'Save key', false, 'on')}</div>
     <p class="hint">Tip: it's easier to paste the key on the phone remote → More.</p>`,
   remote: () => `<p class="big">${esc(info.url)}</p><p class="hint">Or ${esc(info.ipUrl)} · open it on a phone on the same Wi-Fi.</p>`,
-  update: () => `<p class="big">Lumen ${esc(info.version || '')}</p><p class="hint">Gets the latest version from GitHub. Your settings are kept.</p><div class="opts">${o('sys:update', 'Update now', false, 'on')}</div>`,
+  update: () => {
+    const [ver, date] = (info.version || '').split(' · '), u = updCheck;
+    let h = `<p class="big">Lumen ${esc(ver || '')}</p><p class="hint">Released ${esc(date || 'unknown')}</p>`;
+    if (u === 'checking') h += `<div class="upd"><p class="hint">Checking for updates…</p></div>`;
+    else if (u && !u.ok) h += `<div class="upd"><p class="hint">${esc(u.msg)}</p></div>`;
+    else if (u && u.available) h += `<div class="upd"><h3>Update available · released ${esc(u.latest.date)}</h3>
+      <div class="notes">${u.notes.map(n => `<div class="note"><b>${esc(n.title)}</b><small>${esc(n.date)}</small>${n.body ? `<p>${esc(n.body)}</p>` : ''}</div>`).join('')}</div>
+      <div class="opts">${o('sys:update', 'Install update', false, 'on')}</div><p class="hint">Your settings are kept. Lumen restarts by itself.</p></div>`;
+    else if (u) h += `<div class="upd"><p class="ok">No new updates. You're on the latest firmware.</p></div>`;
+    if (u !== 'checking' && !(u && u.available)) h += `<div class="opts">${o('sys:check', 'Check for updates', false, u ? '' : 'on')}</div>`;
+    return h;
+  },
   power: () => `<div class="opts">${o('sys:off', 'Power off', false, 'danger')}${o('sys:reboot', 'Reboot')}${o('sys:restart-ui', 'Restart Lumen')}</div>`,
 };
 async function openSheet(sec, from = 'panel') {
   if (layer === 'home') lastHome = document.activeElement;
+  if (sec === 'update' && updCheck !== 'checking') updCheck = null;
   sheetSec = sec; sheetFrom = from; layer = 'sheet';
   $('#sheetTitle').textContent = MENU.find(m => m[0] === sec)[1];
   $('.shead .back').innerHTML = I.back + ' Back';
@@ -290,6 +318,7 @@ $('#sheet').addEventListener('click', async e => {
   if (k === 'sys') {
     if (v === 'off') return powerMenu();
     if (v === 'update') return startUpdate();
+    if (v === 'check') return checkUpdates();
     if (v === 'reboot') goodbye('Restarting…');
     api('power', { action: v });
   }
@@ -345,7 +374,12 @@ function joinWifi(n) {
   $('#wifiPw').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); connect(); } };
 }
 
-let updWatch = null;
+let updWatch = null, updCheck = null;
+async function checkUpdates() {
+  updCheck = 'checking'; rerender();
+  updCheck = await api('update/check', {}).catch(() => ({ ok: false, msg: 'Lumen server is not responding.' }));
+  rerender();
+}
 function updModal(u) {
   const bar = $('#mExtra .prog i'), pct = $('#mExtra .pct');
   if (bar && pct && layer === 'modal' && u.state !== 'done' && u.state !== 'error') {
@@ -547,7 +581,9 @@ setInterval(async () => {   // pick up changes made from the phone (wallpaper, k
     const [n, w, u] = await Promise.all([api('settings'), api('wallpapers'), api('update')]);
     if ((u.state === 'running' || u.state === 'restarting') && !updWatch) { updModal(u); watchUpdate(); }
     const changed = JSON.stringify(n) !== JSON.stringify(S) || w.length !== walls.length;
+    const reorder = JSON.stringify(n.appOrder || []) !== JSON.stringify(S.appOrder || []);
     S = n; walls = w; if (changed) { applyWall(); rerender(); }
+    if (reorder && layer !== 'arrange') renderTiles();
   } catch { }
 }, 4000);
 setInterval(async () => { wifi = await api('wifi').catch(() => wifi); wifiIcon(); }, 30000);
@@ -567,14 +603,14 @@ setInterval(async () => { wifi = await api('wifi').catch(() => wifi); wifiIcon()
 })();
 
 (async () => {
-  const back = coverFromApp();
+  // Tiles and widgets slide in only on the first start, not every time you come back from an app.
+  try { if (sessionStorage.getItem('lumen.started')) document.body.classList.add('noanim'); sessionStorage.setItem('lumen.started', '1'); } catch { }
   [S, apps, walls, info] = await Promise.all([api('settings'), fetch('/s/apps.json').then(r => r.json()), api('wallpapers'), api('info')]);
   applyWall();
-  apps.forEach((a, i) => $('#apps').append(tile(a, i)));
+  renderTiles();
   tick(); setInterval(tick, 1000);
   renderWidgets();
-  if (back) requestAnimationFrame(() => closeAnim(back));
-  else setTimeout(() => $('#apps .tile').focus({ preventScroll: true }), 100);
+  setTimeout(() => $('#apps .tile').focus({ preventScroll: true }), 100);
   if (location.search === '?shot=news') setTimeout(goNews, 1500);   // used for screenshots
   wifi = await api('wifi').catch(() => []); wifiIcon();
 })();

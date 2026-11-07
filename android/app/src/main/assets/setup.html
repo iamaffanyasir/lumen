@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Lumen Remote</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:28px;text-align:center;color:#f4f6ff;
+  font-family:system-ui,-apple-system,Roboto,sans-serif;background:radial-gradient(120% 60% at 0 0,#2a1a6b 0,transparent 60%),radial-gradient(100% 60% at 100% 100%,#003a5c 0,transparent 60%),#05060f}
+img{width:min(64vw,260px);filter:drop-shadow(0 0 18px rgba(155,107,255,.55))}
+.ring{width:64px;height:64px;border-radius:50%;border:4px solid rgba(255,255,255,.15);border-top-color:#7c5cff;animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(1turn)}}
+.ok{width:64px;height:64px;border-radius:50%;background:#1ed760;color:#05060f;display:grid;place-items:center;font-size:32px;font-weight:800}
+p{color:#a7aed0;line-height:1.6;max-width:320px}
+.box{width:100%;max-width:340px;display:flex;flex-direction:column;gap:10px}
+input{height:54px;padding:0 18px;border-radius:18px;border:0;background:rgba(255,255,255,.07);color:#fff;font:inherit;font-size:1rem;outline:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+input:focus{box-shadow:inset 0 0 0 2px #7c5cff}
+button{height:54px;border:0;border-radius:18px;font:inherit;font-weight:700;color:#fff;background:rgba(255,255,255,.09)}
+button.main{background:linear-gradient(135deg,#7c5cff,#00d4ff)}
+button:active{transform:scale(.96)}
+small{color:#7c84a8;font-size:.8rem;line-height:1.5}
+[hidden]{display:none!important}
+</style></head>
+<body>
+<img src="logo.png" alt="Lumen">
+<div id="icon" class="ring"></div>
+<p id="msg">Looking for your Lumen TV…</p>
+<div class="box" id="manual" hidden>
+  <button class="main" onclick="LumenNative.scan()">Search again</button>
+  <input id="ip" inputmode="url" placeholder="Or type the TV address, e.g. 192.168.1.14" autocomplete="off" autocapitalize="off">
+  <button onclick="LumenNative.connect(document.getElementById('ip').value)">Connect</button>
+  <small>The address is on the TV under Settings → Phone remote.</small>
+</div>
+<script>
+window.setupStatus = (state, msg) => {
+  document.getElementById('msg').textContent = msg;
+  const icon = document.getElementById('icon');
+  icon.className = state === 'found' ? 'ok' : state === 'scan' ? 'ring' : '';
+  icon.textContent = state === 'found' ? '✓' : '';
+  icon.hidden = state === 'fail';
+  document.getElementById('manual').hidden = state !== 'fail';
+};
+document.getElementById('ip').addEventListener('keydown', e => { if (e.key === 'Enter') LumenNative.connect(e.target.value); });
+</script>
+</body></html>

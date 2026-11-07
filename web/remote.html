@@ -89,6 +89,18 @@ label.wide{border-radius:var(--r);cursor:pointer}
 ol.steps{padding-left:1.2em;display:flex;flex-direction:column;gap:6px}
 ol.steps li{color:var(--mute);font-size:.85rem;line-height:1.5}
 ol.steps b{color:var(--fg)}
+.ord{display:flex;align-items:center;gap:10px;padding:8px;border-radius:16px;background:rgba(0,0,0,.2)}
+.ord i{width:38px;height:38px;border-radius:11px;background:var(--a);display:grid;place-items:center;flex:0 0 auto}
+.ord i b{width:55%;height:55%;background:#fff;-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat}
+.ord span{flex:1;font-weight:600;font-size:.92rem;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ord button{width:42px;height:42px;display:grid;place-items:center;border-radius:12px;background:rgba(255,255,255,.08)}
+.ord button[disabled]{opacity:.25}
+.ord button svg{width:18px;height:18px}
+.note{padding:10px 12px;border-radius:14px;background:rgba(0,0,0,.25)}
+.note b{display:block;font-size:.92rem}
+.note small{color:var(--mute);font-size:.75rem}
+.note p{color:#c4c8dc;font-size:.82rem;line-height:1.5;margin-top:4px;white-space:pre-line}
+.upd-ok{color:#7ee2a8;font-weight:600;font-size:.95rem}
 .ok-badge{display:flex;align-items:center;gap:10px;font-weight:600}
 .ok-badge i{width:28px;height:28px;border-radius:50%;background:#1ed760;display:grid;place-items:center;color:#05060f;font-style:normal}
 details summary{cursor:pointer;color:var(--mute);font-size:.85rem;list-style:none}
@@ -241,6 +253,16 @@ nav svg{width:20px;height:20px}
 
   <!-- MORE -->
   <section class="view" id="v-more">
+    <div class="card" id="getApp" hidden>
+      <h3>Android app</h3>
+      <p class="hint">Install Lumen Remote: it finds the TV by itself, your phone's volume buttons control the TV, and voice search works.</p>
+      <a class="btn wide grad" href="/s/lumen-remote.apk" download>Download the app</a>
+    </div>
+    <div class="card" id="appTv" hidden>
+      <h3>Connected TV</h3>
+      <p class="hint" id="appHost"></p>
+      <button class="wide" id="changeTv">Find another TV</button>
+    </div>
     <div class="card">
       <h3>Music &amp; videos</h3>
       <p class="hint">Send files from this phone to the TV. They show up in the Music and Videos apps.</p>
@@ -267,8 +289,18 @@ nav svg{width:20px;height:20px}
       <button class="wide" data-k="F11">Toggle fullscreen</button>
     </div>
     <div class="card">
+      <h3>Updates</h3>
+      <p class="hint" id="verInfo">Lumen</p>
+      <div id="updBody" style="display:flex;flex-direction:column;gap:10px"></div>
+      <button class="wide grad" id="upd">Check for updates</button>
+    </div>
+    <div class="card">
+      <h3>Arrange apps</h3>
+      <p class="hint">Change the order of apps on the TV's home screen.</p>
+      <div class="list" id="order"></div>
+    </div>
+    <div class="card">
       <h3>Lumen</h3>
-      <button class="wide" id="upd">Update Lumen</button>
       <button class="wide" data-p="restart-ui">Restart Lumen</button>
     </div>
     <div class="card">
@@ -299,7 +331,8 @@ function conn() {
 }
 conn();
 const send = m => ws && ws.readyState === 1 && (ws.send(JSON.stringify(m)), true);
-const buzz = () => navigator.vibrate && navigator.vibrate(8);
+const NATIVE = window.LumenNative;   // set when running inside the Lumen Remote Android app
+const buzz = () => NATIVE ? NATIVE.buzz() : navigator.vibrate && navigator.vibrate(8);
 let toastT;
 const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600); };
 
@@ -322,6 +355,7 @@ const sq = $('#sq');
 const sendSearch = q => { q = q.trim(); if (!q) return; send({ t: 'search', q }); sq.value = ''; sq.blur(); buzz(); };
 $('#sf').onsubmit = e => { e.preventDefault(); sendSearch(sq.value); };
 $('#mic').onclick = () => {
+  if (NATIVE) { buzz(); return NATIVE.voice(); }   // Android's own speech recognition
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR || !window.isSecureContext) { sq.focus(); toast('Tap the 🎤 on your keyboard and speak, then press Search'); return; }
   const r = new SR(); r.lang = navigator.language || 'en-US'; r.interimResults = true;
@@ -390,8 +424,10 @@ kb.addEventListener('keydown', e => {
 let apps = [], lgApp = null;
 const logo = (a, cls = 'app') => `<i style="--a:${esc(a.a)}"><b style="--m:url(/s/icons/${esc(a.logo)}.svg)"></b></i>`;
 const chevron = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>';
-fetch('/s/apps.json').then(r => r.json()).then(list => {
-  apps = list;
+const sortApps = (list, order = []) => { const pos = n => { const i = order.indexOf(n); return i < 0 ? 1e3 : i; };
+  return list.map((a, i) => [a, i]).sort((x, y) => pos(x[0].name) - pos(y[0].name) || x[1] - y[1]).map(x => x[0]); };
+Promise.all([fetch('/s/apps.json').then(r => r.json()), fetch('/api/settings').then(r => r.json()).catch(() => ({}))]).then(([list, st]) => {
+  apps = sortApps(list, st.appOrder || []); drawOrder();
   $('#apps').innerHTML = apps.map((a, i) => `<button class="app" data-i="${i}">${logo(a)}<span>${esc(a.name)}</span></button>`).join('');
   $$('#apps .app').forEach(b => b.onclick = () => { buzz(); send({ t: 'open', app: apps[b.dataset.i].name }) || toast('Not connected to the TV'); });
   const signable = apps.filter(a => a.login || a.codeLogin);
@@ -472,6 +508,7 @@ function bindSetup() {
   };
 }
 function copy(text) {   // clipboard API needs https, so use the old way on http://lumen.local
+  if (NATIVE) { NATIVE.copy(text); return toast('Code copied'); }
   const t = document.createElement('textarea'); t.value = text; t.style.cssText = 'position:fixed;opacity:0'; document.body.append(t); t.select();
   let ok = false; try { ok = document.execCommand('copy'); } catch { }
   t.remove(); navigator.clipboard?.writeText(text).catch(() => { });
@@ -554,6 +591,55 @@ function openSheet(kind) {
 function closeSheet() { $('#sheet').classList.remove('on'); sheetKind = ''; }
 $('#sheet').addEventListener('click', e => { if (e.target.id === 'sheet') closeSheet(); });
 
+/* ---------- Android app hooks ---------- */
+window.lumenApp = {
+  vol: d => { send({ t: 'vol', d }); },
+  voiceResult: q => sendSearch(q),
+  toast: m => toast(m),
+  back() {   // phone back button: close the top thing on screen; false means leave the app
+    if ($('#sheet').classList.contains('on')) { closeSheet(); return true; }
+    if ($('#v-login').classList.contains('on') && $('#lg-pick').hidden) { lgShow('pick'); clearInterval(ytPoll); return true; }
+    if (!$('#v-remote').classList.contains('on')) { view('remote'); return true; }
+    return false;
+  }
+};
+if (NATIVE) {
+  $('#appTv').hidden = false; $('#appHost').textContent = 'This phone controls the Lumen TV at ' + NATIVE.host() + '.';
+  $('#changeTv').onclick = () => NATIVE.changeTv();
+} else if (/android/i.test(navigator.userAgent)) $('#getApp').hidden = false;
+
+/* ---------- arrange apps (saved on the TV) ---------- */
+const UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="m6 15 6-6 6 6"/></svg>';
+const DOWN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>';
+function drawOrder() {
+  $('#order').innerHTML = apps.map((a, i) => `<div class="ord">${logo(a)}<span>${esc(a.name)}</span>
+    <button data-mv="${i}:-1" ${i ? '' : 'disabled'} aria-label="Move up">${UP}</button><button data-mv="${i}:1" ${i < apps.length - 1 ? '' : 'disabled'} aria-label="Move down">${DOWN}</button></div>`).join('');
+  $$('#order [data-mv]').forEach(b => b.onclick = () => {
+    const [i, d] = b.dataset.mv.split(':').map(Number), j = i + d;
+    [apps[i], apps[j]] = [apps[j], apps[i]]; buzz(); drawOrder();
+    post('/api/settings', { appOrder: apps.map(a => a.name) });
+    $('#apps').innerHTML = apps.map((a, k) => `<button class="app" data-i="${k}">${logo(a)}<span>${esc(a.name)}</span></button>`).join('');
+    $$('#apps .app').forEach(x => x.onclick = () => { buzz(); send({ t: 'open', app: apps[x.dataset.i].name }) || toast('Not connected to the TV'); });
+  });
+}
+
+/* ---------- updates: check first, then show the release date and notes ---------- */
+let updFound = false;
+fetch('/api/info').then(r => r.json()).then(i => { const [v, d] = (i.version || '').split(' · '); $('#verInfo').textContent = `Lumen ${v || ''}${d ? ' · released ' + d : ''}`; }).catch(() => { });
+$('#upd').onclick = async () => {
+  const btn = $('#upd'), body = $('#updBody'); buzz();
+  if (updFound) { post('/api/update'); toast('Updating. Watch the TV for progress.'); btn.textContent = 'Installing…'; btn.disabled = true; return; }
+  btn.textContent = 'Checking…'; btn.disabled = true; body.innerHTML = '';
+  const r = await post('/api/update/check').catch(() => ({ ok: false, msg: 'Lumen is not responding.' }));
+  btn.disabled = false;
+  if (!r.ok) { body.innerHTML = `<p class="hint">${esc(r.msg)}</p>`; btn.textContent = 'Check again'; return; }
+  if (!r.available) { body.innerHTML = `<p class="upd-ok">No new updates. You're on the latest firmware.</p>`; btn.textContent = 'Check again'; return; }
+  updFound = true;
+  body.innerHTML = `<p style="font-weight:700">Update available · released ${esc(r.latest.date)}</p>` +
+    r.notes.map(n => `<div class="note"><b>${esc(n.title)}</b><small>${esc(n.date)}</small>${n.body ? `<p>${esc(n.body)}</p>` : ''}</div>`).join('');
+  btn.textContent = 'Install update';
+};
+
 /* ---------- More ---------- */
 fetch('/api/settings').then(r => r.json()).then(s => { $('#ykey').value = s.ytKey || ''; });
 $('#ysave').onclick = async () => { await post('/api/settings', { ytKey: $('#ykey').value.trim() }); toast('YouTube key saved'); buzz(); };
@@ -576,7 +662,6 @@ function uploadMedia(input, kind) {
 }
 $('#fm').onchange = () => uploadMedia($('#fm'), 'music');
 $('#fv').onchange = () => uploadMedia($('#fv'), 'videos');
-$('#upd').onclick = () => { fetch('/api/update', { method: 'POST' }); toast('Updating. Watch the TV for progress.'); };
 $$('[data-p]').forEach(b => b.onclick = () => {
   const a = b.dataset.p, names = { off: 'Power off', reboot: 'Reboot', 'restart-ui': 'Restart Lumen' };
   if (!confirm(names[a] + '?')) return;

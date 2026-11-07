@@ -242,6 +242,27 @@ async def do_update():
         st("error", 0, str(ex))
 
 
+async def update_check(req):
+    """Looks for a newer Lumen on GitHub without installing it. Returns the release date and notes."""
+    if not (ROOT / ".git").exists():
+        return web.json_response({"ok": False, "msg": "Lumen wasn't installed with git clone, so it can't check for updates."})
+    rc, _ = await git("fetch", "--quiet")
+    if rc: return web.json_response({"ok": False, "msg": "Couldn't reach GitHub. Check your Wi-Fi connection."})
+    fmt = "--format=%h%x1f%cd%x1f%s%x1f%b%x1e"
+    _, cur = await git("log", "-1", fmt, "--date=format:%d %b %Y")
+    _, new = await git("log", "HEAD..@{u}", fmt, "--date=format:%d %b %Y")
+    def parse(out):
+        notes = []
+        for rec in out.split("\x1e"):
+            f = rec.strip("\n").split("\x1f")
+            if len(f) >= 3 and f[0].strip():
+                notes.append({"hash": f[0].strip(), "date": f[1], "title": f[2].strip(), "body": (f[3] if len(f) > 3 else "").strip()[:600]})
+        return notes
+    current, notes = (parse(cur) or [{}])[0], parse(new)
+    return web.json_response({"ok": True, "available": bool(notes), "current": current,
+                              "latest": notes[0] if notes else current, "notes": notes[:20]})
+
+
 async def update(req):
     if UPD["state"] not in ("running", "restarting"):
         UPD.update(state="running", pct=3, msg="Starting…")
@@ -679,7 +700,7 @@ async def main_app():
     r.add_get("/api/wallpapers", wallpapers); r.add_post("/api/wallpaper", upload)
     r.add_get("/api/bt", bt_list); r.add_post("/api/bt/scan", bt_scan); r.add_post("/api/bt/action", bt_action)
     r.add_post("/api/power", power)
-    r.add_post("/api/update", update); r.add_get("/api/update", update_status)
+    r.add_post("/api/update", update); r.add_post("/api/update/check", update_check); r.add_get("/api/update", update_status)
     r.add_get("/api/yt/status", yt_status); r.add_post("/api/yt/login", yt_login)
     r.add_get("/api/yt/token", yt_token); r.add_post("/api/yt/logout", yt_logout)
     r.add_get("/api/yt/history", yt_history); r.add_post("/api/yt/history", yt_history_add)

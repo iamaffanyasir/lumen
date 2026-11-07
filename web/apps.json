@@ -5,6 +5,7 @@
   {"name": "Videos", "sub": "Movies & clips on this TV", "url": "/s/apps/videos.html", "a": "#ff9f0a", "logo": "video"},
   {"name": "Netflix", "sub": "Movies & series", "url": "https://www.netflix.com", "a": "#b20710", "logo": "netflix", "login": "https://www.netflix.com/login"},
   {"name": "Prime Video", "sub": "Movies & series", "url": "https://www.primevideo.com", "a": "#0f79af", "logo": "primevideo", "login": "https://www.primevideo.com/"},
+  {"name": "1Flex", "sub": "Movies, shows & live TV", "url": "https://1flex.org", "a": "#e8323a", "logo": "1flex"},
   {"name": "Spotify", "sub": "Music & podcasts", "url": "https://open.spotify.com", "a": "#1db954", "logo": "spotify",
    "login": "https://accounts.spotify.com/login?continue=https%3A%2F%2Fopen.spotify.com%2F"},
   {"name": "Twitch", "sub": "Live streams", "url": "https://www.twitch.tv", "a": "#9146ff", "logo": "twitch", "login": "https://www.twitch.tv/login"},

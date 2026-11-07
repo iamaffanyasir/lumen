@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Remote ring with the OK dot, inside the 66dp safe zone of an adaptive icon -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#00000000" android:strokeColor="#FFFFFF" android:strokeWidth="5"
+        android:pathData="M54,30a24,24 0,1 1,-0.01 0z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M54,45a9,9 0,1 1,-0.01 0z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M50,40l4,-4l4,4z M50,68l4,4l4,-4z M40,50l-4,4l4,4z M68,50l4,4l-4,4z" />
+</vector>
