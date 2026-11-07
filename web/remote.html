@@ -38,6 +38,12 @@ nav{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) 
 nav button{background:transparent;height:52px;font-size:.75rem;color:var(--mute);display:grid;place-items:center;gap:2px}
 nav button.on{background:linear-gradient(135deg,var(--c1),var(--c2));color:#fff}
 nav svg{width:20px;height:20px}
+.search{display:flex;gap:10px}
+.search input,.field{flex:1;width:100%;min-width:0;padding:16px 18px;border-radius:18px;border:0;background:var(--card);color:#fff;font:inherit;font-size:1rem;outline:none;user-select:text;-webkit-user-select:text;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+.search input:focus,.field:focus{box-shadow:inset 0 0 0 2px var(--c1)}
+#mic{width:56px;flex:0 0 56px;display:grid;place-items:center;background:linear-gradient(135deg,var(--c1),var(--c2))}
+#mic.rec{animation:rec 1s ease-in-out infinite}
+@keyframes rec{50%{transform:scale(1.12)}}
 #toast{position:fixed;left:50%;bottom:110px;transform:translate(-50%,200px);background:rgba(20,22,44,.95);padding:12px 18px;border-radius:14px;transition:transform .4s var(--ease)}
 #toast.show{transform:translate(-50%,0)}
 </style></head>
@@ -45,6 +51,10 @@ nav svg{width:20px;height:20px}
 <header><img src="/s/logo.png" alt="Lumen" style="height:26px;filter:drop-shadow(0 0 12px rgba(155,107,255,.6))"><div class="dot" id="dot"></div></header>
 <main>
   <section class="view on" id="v-remote">
+    <form class="search" id="sf">
+      <input id="sq" type="search" enterkeyhint="search" placeholder="Search YouTube" autocomplete="off">
+      <button type="button" id="mic" aria-label="Voice search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+    </form>
     <div class="dpad">
       <button class="u" data-k="UP" data-rep><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 15 6-6 6 6"/></svg></button>
       <button class="d" data-k="DOWN" data-rep><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg></button>
@@ -83,6 +93,9 @@ nav svg{width:20px;height:20px}
     <input id="file" type="file" accept="image/*" hidden>
     <h3>Screen</h3>
     <button class="wide" data-k="F11">Toggle fullscreen</button>
+    <h3>YouTube API key</h3>
+    <input id="ykey" class="field" placeholder="Paste your YouTube API key" autocomplete="off">
+    <button class="wide" id="ysave">Save key</button>
     <h3>Lumen</h3>
     <button class="wide" id="upd">Update Lumen</button>
     <h3>Power</h3>
@@ -104,6 +117,7 @@ let ws;
 function conn() {
   ws = new WebSocket(`ws://${location.host}/ws`);
   ws.onopen = () => $('#dot').classList.add('on');
+  ws.onmessage = e => { const m = JSON.parse(e.data); if (m.t === 'note') toast(m.msg); };
   ws.onclose = () => { $('#dot').classList.remove('on'); setTimeout(conn, 1000); };
 }
 conn();
@@ -122,6 +136,26 @@ $$('[data-k],[data-v]').forEach(b => {
   });
   ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, stop));
 });
+
+// Search + voice search. Speech recognition only works on secure (https) pages, so on
+// http://lumen.local we fall back to the phone keyboard's own microphone button.
+const sq = $('#sq');
+const sendSearch = q => { q = q.trim(); if (!q) return; send({ t: 'search', q }); sq.value = ''; sq.blur(); buzz(); };
+$('#sf').onsubmit = e => { e.preventDefault(); sendSearch(sq.value); };
+$('#mic').onclick = () => {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR || !window.isSecureContext) { sq.focus(); toast('Tap the 🎤 on your keyboard and speak, then press Search'); return; }
+  const r = new SR(); r.lang = navigator.language || 'en-US'; r.interimResults = true;
+  $('#mic').classList.add('rec'); buzz();
+  r.onresult = e => { sq.value = [...e.results].map(x => x[0].transcript).join(''); if (e.results[e.results.length - 1].isFinal) sendSearch(sq.value); };
+  r.onend = r.onerror = () => $('#mic').classList.remove('rec');
+  r.start();
+};
+fetch('/api/settings').then(r => r.json()).then(s => { $('#ykey').value = s.ytKey || ''; });
+$('#ysave').onclick = async () => {
+  await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ytKey: $('#ykey').value.trim() }) });
+  toast('YouTube key saved'); buzz();
+};
 
 // Tabs
 $$('nav button').forEach(b => b.onclick = () => {

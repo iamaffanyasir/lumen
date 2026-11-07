@@ -1,88 +1,189 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>YouTube · Lumen</title><link rel="stylesheet" href="/s/style.css">
 <style>
-body{overflow-y:auto;scrollbar-width:none}
-.wall{--w0:#0d0306;--w1:#ff1e3c;--w2:#5c0820;--w3:#ff7a59}
-.yt{padding:4.5vh 5vw 8vh}
-.bar{display:flex;gap:2vw;align-items:center;margin-bottom:4vh}
-.logo{font-weight:800;font-size:1.8rem;white-space:nowrap}.logo b{color:#ff2d55}.logo span{color:var(--mute);font-weight:400;font-size:1rem;margin-left:.4em}
-#q{flex:1;margin:0}
-h1{font-size:1rem;color:var(--mute);letter-spacing:.14em;text-transform:uppercase;margin-bottom:2vh}
-.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:2.2vw}
-.card{text-align:left;border-radius:18px;overflow:hidden;background:rgba(255,255,255,.05);transition:transform .45s var(--ease),box-shadow .45s;animation:rise .7s var(--soft) both;animation-delay:calc(var(--i)*45ms)}
-.card img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
-.card div{padding:.8em 1em .3em;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.card small{display:block;color:var(--mute);padding:0 1.15em 1em}
-.card:focus{transform:scale(1.07);box-shadow:0 0 0 3px #fff,0 24px 60px -12px #ff2d55;position:relative;z-index:2}
-#player{position:fixed;inset:0;background:#000;z-index:70;display:none;animation:pop .45s var(--soft)}
-#player iframe{width:100%;height:100%;border:0}
-.empty{max-width:640px;margin:10vh auto;text-align:center}.empty p{color:var(--mute);margin:1rem 0 2rem;line-height:1.6}
+.wall{--g:radial-gradient(70% 60% at 10% 0%,#4a0a12 0,transparent 70%),#0a0507}
+.yt{height:100%;display:flex;flex-direction:column}
+.bar{display:flex;align-items:center;gap:1.5vw;padding:4vh 5vw 2vh}
+.ytlogo{display:flex;align-items:center;gap:.5em;font-weight:800;font-size:1.5rem}
+.ytlogo i{width:1.6em;height:1.6em;background:#ff0033;-webkit-mask:url(/s/icons/youtube.svg) center/contain no-repeat;mask:url(/s/icons/youtube.svg) center/contain no-repeat}
+#q{flex:1;max-width:46vw;margin:0}
+.hintr{color:var(--mute);font-size:.9rem}
+.view{flex:1;overflow:hidden;position:relative}
+#rows{transition:transform .4s var(--ease);will-change:transform}
+.yrow{padding:1.2vh 0 2.4vh}
+.yrow h2{padding:0 5vw .8vh;font-size:1.15rem;font-weight:700}
+.yrow .track{gap:1.4vw}
+.card{flex:0 0 auto;width:20vw;text-align:left;border-radius:14px;border:3px solid transparent;transition:transform .22s var(--ease);will-change:transform;position:relative}
+.card .th{position:relative;border-radius:11px;overflow:hidden;background:#1a1420;aspect-ratio:16/9}
+.card img{width:100%;height:100%;object-fit:cover;display:block}
+.card .dur{position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.8);padding:2px 6px;border-radius:5px;font-size:.8rem;font-weight:600}
+.card .t{padding:.6em .3em 0;font-weight:600;font-size:.95rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;opacity:.75}
+.card small{display:block;color:var(--mute);padding:.2em .3em;font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card:focus{transform:scale(1.07);border-color:#fff;z-index:2}
+.card:focus .t{opacity:1}
+.msg{max-width:640px;margin:12vh auto;text-align:center}.msg p{color:var(--mute);margin:1rem 0 2rem;line-height:1.6}
+.msg .opts{grid-template-columns:1fr 1fr}
+/* player */
+#player{position:fixed;inset:0;background:#000;z-index:70;display:none}
+#player.on{display:block}
+#player iframe{width:100%;height:100%;border:0;pointer-events:none}
+.osd{position:fixed;left:0;right:0;bottom:0;z-index:71;padding:12vh 5vw 5vh;background:linear-gradient(transparent,rgba(0,0,0,.85));opacity:0;transition:opacity .3s;pointer-events:none}
+.osd.on{opacity:1}
+.osd h3{font-size:1.6rem;margin-bottom:.3rem}.osd p{color:#bbb;margin-bottom:1.4rem}
+.pbar{height:6px;border-radius:9px;background:rgba(255,255,255,.25);overflow:hidden}
+.pbar i{display:block;height:100%;background:#ff0033;transform-origin:left;transform:scaleX(0);transition:transform .5s linear}
+.ptime{display:flex;justify-content:space-between;margin-top:.6rem;color:#ddd;font-variant-numeric:tabular-nums}
+.keys{color:#999;font-size:.85rem;margin-top:.8rem}
+.state{position:fixed;left:50%;top:50%;z-index:72;width:7vw;height:7vw;margin:-3.5vw;border-radius:50%;background:rgba(0,0,0,.6);display:grid;place-items:center;font-size:2.5vw;opacity:0;transform:scale(.8);transition:opacity .25s,transform .25s;pointer-events:none}
+.state.on{opacity:1;transform:none}
 </style></head>
 <body>
-<div class="wall"><i></i><i></i><i></i></div>
+<div class="wall"></div>
 <div class="yt">
-  <div class="bar"><div class="logo"><b>▶</b> YouTube<span>on</span> <img src="/s/logo.png" alt="Lumen" style="height:.8em;vertical-align:baseline"></div><input id="q" class="txt" placeholder="Search YouTube"></div>
-  <h1 id="title">Trending</h1>
-  <div id="grid" class="grid"></div>
+  <div class="bar">
+    <div class="ytlogo"><i></i>YouTube</div>
+    <input id="q" class="txt" placeholder="Search" autocomplete="off">
+    <span class="hintr">Tip: use voice search on the phone remote</span>
+  </div>
+  <div class="view"><div id="rows"></div></div>
 </div>
-<div id="player"></div>
+<div id="player"><div id="yp"></div></div>
+<div class="osd" id="osd"><h3 id="oT"></h3><p id="oC"></p><div class="pbar"><i id="oB"></i></div>
+  <div class="ptime"><span id="oN">0:00</span><span id="oD">0:00</span></div>
+  <div class="keys">OK: play/pause · ←/→: 10 seconds · Back: close</div></div>
+<div class="state" id="st"></div>
 <script>
-const $ = s => document.querySelector(s), G = $('#grid'), Q = $('#q'), P = $('#player');
-const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-let key = '', region = 'US', last = null;
+const $ = s => document.querySelector(s), Q = $('#q'), R = $('#rows');
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const CATS = [['Trending', 0], ['Music', 10], ['Gaming', 20], ['Sports', 17], ['Entertainment', 24], ['Comedy', 23], ['News', 25], ['Science & Tech', 28]];
+let key = '', region = 'IN', rowsData = [], cur = null, yp = null, apiReady = null;
 
+/* ---------- YouTube Data API ---------- */
 async function yt(path) {
   const r = await fetch(`https://www.googleapis.com/youtube/v3/${path}&key=${encodeURIComponent(key)}`).then(r => r.json());
-  if (r.error) throw r.error.message; return r.items;
+  if (r.error) throw r.error.message; return r.items || [];
 }
-function show(items) {
-  G.innerHTML = items.map((v, i) => {
-    const id = v.id.videoId || v.id, s = v.snippet, th = s.thumbnails.high || s.thumbnails.medium || s.thumbnails.default;
-    return `<button class="card" style="--i:${i}" data-id="${esc(id)}"><img src="${esc(th.url)}" alt=""><div>${esc(s.title)}</div><small>${esc(s.channelTitle)}</small></button>`;
-  }).join('');
-  G.querySelector('.card')?.focus();
+const VPARTS = 'part=snippet,contentDetails,statistics&maxResults=20';
+const chart = cat => yt(`videos?${VPARTS}&chart=mostPopular&regionCode=${region}${cat ? '&videoCategoryId=' + cat : ''}`);
+async function search(q) {   // 100 units for search + 1 unit for durations
+  const ids = (await yt(`search?part=id&type=video&maxResults=40&q=${encodeURIComponent(q)}`)).map(v => v.id.videoId).join(',');
+  return ids ? yt(`videos?part=snippet,contentDetails,statistics&id=${ids}`) : [];
 }
-async function load(q) {
-  $('#title').textContent = q ? `Results for “${q}”` : 'Trending';
-  G.innerHTML = '<p class="hint">Loading…</p>';
-  try { show(await yt(q ? `search?part=snippet&type=video&maxResults=24&q=${encodeURIComponent(q)}` : `videos?part=snippet&chart=mostPopular&maxResults=24&regionCode=${region}`)); }
-  catch (e) { G.innerHTML = `<p class="hint">YouTube error: ${esc(e)}</p>`; }
-}
-function play(id) {
-  P.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&modestbranding=1&playsinline=1" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
-  P.style.display = 'block';
-}
-function stop() { P.innerHTML = ''; P.style.display = 'none'; last?.focus(); }
+const dur = iso => { const m = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/.exec(iso || '') || []; const h = +m[1] || 0, mi = +m[2] || 0, s = +m[3] || 0;
+  return (h ? h + ':' + String(mi).padStart(2, '0') : mi) + ':' + String(s).padStart(2, '0'); };
+const views = n => { n = +n; return !n ? '' : n >= 1e9 ? (n / 1e9).toFixed(1) + 'B views' : n >= 1e6 ? (n / 1e6).toFixed(1) + 'M views' : n >= 1e3 ? Math.round(n / 1e3) + 'K views' : n + ' views'; };
 
-G.addEventListener('click', e => { const c = e.target.closest('.card'); if (c) { last = c; play(c.dataset.id); } });
-Q.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); load(Q.value.trim()); } });
+/* ---------- rows ---------- */
+function render() {
+  R.innerHTML = rowsData.map((row, r) => `<section class="yrow"><h2>${esc(row.title)}</h2><div class="track">${row.items.map((v, i) => {
+    const s = v.snippet, th = s.thumbnails.medium || s.thumbnails.default;
+    return `<button class="card" data-r="${r}" data-i="${i}" style="animation:rise .4s var(--ease) backwards;animation-delay:${Math.min(i, 6) * 40}ms">
+      <div class="th"><img src="${esc(th.url)}" loading="lazy" decoding="async" alt=""><span class="dur">${dur(v.contentDetails?.duration)}</span></div>
+      <div class="t">${esc(s.title)}</div><small>${esc(s.channelTitle)}${v.statistics ? ' · ' + views(v.statistics.viewCount) : ''}</small></button>`;
+  }).join('')}</div></section>`).join('');
+  R.style.transform = 'none';
+  const first = R.querySelector('.card'); if (first) focusCard(first);
+}
+async function home() {
+  R.innerHTML = '<p class="hint" style="padding:0 5vw">Loading…</p>';
+  const res = await Promise.allSettled(CATS.map(([, c]) => chart(c)));
+  rowsData = CATS.map(([title], i) => ({ title, items: res[i].status === 'fulfilled' ? res[i].value : [] })).filter(r => r.items.length);
+  if (!rowsData.length) return showMsg('Could not load YouTube', String(res[0].reason || 'Check your API key in Settings → YouTube.'));
+  render();
+}
+async function doSearch(q) {
+  if (!q) return home();
+  Q.value = q; R.innerHTML = `<p class="hint" style="padding:0 5vw">Searching “${esc(q)}”…</p>`;
+  try {
+    const items = await search(q);
+    rowsData = []; for (let i = 0; i < items.length; i += 10) rowsData.push({ title: i ? '' : `Results for “${q}”`, items: items.slice(i, i + 10) });
+    rowsData.length ? render() : showMsg('No results', `Nothing found for “${q}”.`);
+  } catch (e) { showMsg('Search failed', String(e)); }
+}
+function showMsg(title, text, btns = [['Try again', 'home()'], ['Back to Lumen', "location.href='/'"]]) {
+  rowsData = [];
+  R.innerHTML = `<div class="msg"><h2>${esc(title)}</h2><p>${text}</p><div class="opts">${btns.map(([l, js]) => `<button class="opt" onclick="${js}">${l}</button>`).join('')}</div></div>`;
+  R.querySelector('button')?.focus();
+}
 
+function focusCard(c) {
+  c.focus({ preventScroll: true });
+  const track = c.parentElement, view = innerWidth, pad = view * .05;
+  const x = Math.min(Math.max(0, track.scrollWidth - view), Math.max(0, c.offsetLeft + c.offsetWidth - view + pad * 2));
+  track.style.transform = `translateX(${-x}px)`;
+  const sec = track.parentElement;                       // keep the focused row near the top
+  R.style.transform = `translateY(${-Math.max(0, sec.offsetTop - 10)}px)`;
+}
+
+/* ---------- player (YouTube IFrame API, controlled by the remote) ---------- */
+function loadApi() {
+  return apiReady ||= new Promise(res => { window.onYouTubeIframeAPIReady = res; const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; document.head.append(s); });
+}
+async function play(card) {
+  cur = card; const v = rowsData[card.dataset.r].items[card.dataset.i];
+  $('#oT').textContent = v.snippet.title; $('#oC').textContent = v.snippet.channelTitle;
+  $('#player').classList.add('on'); osd();
+  await loadApi();
+  if (yp) { yp.loadVideoById(v.id); return; }
+  yp = new YT.Player('yp', { videoId: v.id, playerVars: { autoplay: 1, controls: 0, rel: 0, iv_load_policy: 3, fs: 0, disablekb: 1, playsinline: 1, modestbranding: 1 },
+    events: { onStateChange: e => { if (e.data === YT.PlayerState.ENDED) next(); } } });
+}
+function next() {   // auto-play the next video in the same row
+  const n = cur?.nextElementSibling; if (n) { focusCard(n); play(n); } else close();
+}
+function close() { yp?.stopVideo(); $('#player').classList.remove('on'); $('#osd').classList.remove('on'); cur && focusCard(cur); }
+const playing = () => $('#player').classList.contains('on');
+let osdT, osdI;
+function osd() {
+  $('#osd').classList.add('on'); clearTimeout(osdT); clearInterval(osdI);
+  const upd = () => { if (!yp?.getDuration) return; const d = yp.getDuration() || 0, t = yp.getCurrentTime() || 0;
+    $('#oB').style.transform = `scaleX(${d ? t / d : 0})`; $('#oN').textContent = fmt(t); $('#oD').textContent = fmt(d); };
+  upd(); osdI = setInterval(upd, 500);
+  osdT = setTimeout(() => { $('#osd').classList.remove('on'); clearInterval(osdI); }, 3500);
+}
+const fmt = s => { s = Math.floor(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = String(s % 60).padStart(2, '0'); return h ? `${h}:${String(m).padStart(2, '0')}:${x}` : `${m}:${x}`; };
+function flash(sym) { const s = $('#st'); s.textContent = sym; s.classList.add('on'); setTimeout(() => s.classList.remove('on'), 600); }
+function toggle() { if (!yp?.getPlayerState) return; if (yp.getPlayerState() === 1) { yp.pauseVideo(); flash('❚❚'); } else { yp.playVideo(); flash('▶'); } osd(); }
+function seek(d) { if (!yp?.getCurrentTime) return; yp.seekTo(Math.max(0, yp.getCurrentTime() + d), true); flash(d > 0 ? '+10' : '−10'); osd(); }
+
+/* ---------- remote keys ---------- */
 addEventListener('keydown', e => {
-  const back = e.key === 'Escape' || e.key === 'BrowserBack' || (e.altKey && e.key === 'ArrowLeft');
-  if (P.style.display === 'block') { if (back) { e.preventDefault(); stop(); } return; }
-  if (back) { e.preventDefault(); location.href = '/'; return; }
-  const cards = [...G.querySelectorAll('.card,button')], a = document.activeElement, i = cards.indexOf(a);
-  const cols = Math.max(1, cards.filter(c => c.offsetTop === cards[0]?.offsetTop).length);
-  let n = null;
-  if (a === Q) { if (e.key === 'ArrowDown') n = 0; }
-  else if (i >= 0) {
-    if (e.key === 'ArrowUp' && i < cols) { e.preventDefault(); Q.focus(); return; }
-    n = { ArrowLeft: i - 1, ArrowRight: i + 1, ArrowUp: i - cols, ArrowDown: i + cols }[e.key];
-  } else if (e.key.startsWith('Arrow')) n = 0;
-  if (n != null && cards[n]) { e.preventDefault(); cards[n].focus({ preventScroll: true }); cards[n].scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+  const k = e.key, back = k === 'Escape' || k === 'BrowserBack' || (e.altKey && k === 'ArrowLeft') || (k === 'Backspace' && document.activeElement !== Q);
+  if (playing()) {
+    e.preventDefault();
+    if (back) close(); else if (k === 'Enter' || k === ' ') toggle();
+    else if (k === 'ArrowRight') seek(10); else if (k === 'ArrowLeft') seek(-10); else osd();
+    return;
+  }
+  if (back) { e.preventDefault(); return document.activeElement === Q ? R.querySelector('.card')?.focus() : (location.href = '/'); }
+  const a = document.activeElement;
+  if (a === Q) { if (k === 'ArrowDown') { e.preventDefault(); const c = R.querySelector('.card'); c && focusCard(c); } else if (k === 'Enter') { e.preventDefault(); doSearch(Q.value.trim()); } return; }
+  if (!a?.classList.contains('card')) { if (k.startsWith('Arrow')) { const c = R.querySelector('.card,.msg button'); c?.classList.contains('card') ? focusCard(c) : c?.focus(); } return; }
+  const r = +a.dataset.r, i = +a.dataset.i, rows = R.querySelectorAll('.track');
+  let t = null;
+  if (k === 'ArrowLeft') t = a.previousElementSibling; else if (k === 'ArrowRight') t = a.nextElementSibling;
+  else if (k === 'ArrowUp') { if (r === 0) { e.preventDefault(); Q.focus(); R.style.transform = 'none'; return; } const row = rows[r - 1].children; t = row[Math.min(i, row.length - 1)]; }
+  else if (k === 'ArrowDown' && rows[r + 1]) { const row = rows[r + 1].children; t = row[Math.min(i, row.length - 1)]; }
+  if (t) { e.preventDefault(); focusCard(t); }
 });
+R.addEventListener('click', e => { const c = e.target.closest('.card'); if (c) { focusCard(c); play(c); } });
+$('#player').addEventListener('click', toggle);
+$('#player').addEventListener('mousemove', osd);
+
+/* ---------- phone search (typed or voice) ---------- */
+(function sock() {
+  const ws = new WebSocket(`ws://${location.host}/ws?tv=1`);
+  ws.onmessage = e => { const m = JSON.parse(e.data); if (m.t === 'search') { if (playing()) close(); doSearch(m.q); } };
+  ws.onclose = () => setTimeout(sock, 2000);
+})();
 
 (async () => {
   const s = await fetch('/api/settings').then(r => r.json()).catch(() => ({}));
-  key = s.ytKey || ''; region = s.region || 'US';
-  if (key) return load('');
-  $('#title').textContent = '';
-  G.style.display = 'block';
-  G.innerHTML = `<div class="empty"><h2>Add a YouTube API key</h2>
-    <p>The Lumen YouTube skin needs a free YouTube Data API key. Add it in Settings → YouTube.<br>Until then you can use the classic YouTube site.</p>
-    <button class="opt on" onclick="location.href='https://www.youtube.com'">Open classic YouTube</button>
-    <button class="opt" onclick="location.href='/'">Back to home</button></div>`;
-  G.querySelector('button').focus();
+  key = s.ytKey || ''; region = s.region || 'IN';
+  if (!key) return showMsg('Add your YouTube API key', 'Open the phone remote → More → YouTube API key, paste your key and save.<br>It is free: see the Lumen README for the steps.',
+    [['Open classic YouTube', "location.href='https://www.youtube.com'"], ['Back to Lumen', "location.href='/'"]]);
+  const q = new URLSearchParams(location.search).get('q');
+  q ? doSearch(q) : home();
 })();
 </script>
 </body></html>

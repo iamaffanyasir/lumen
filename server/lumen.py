@@ -12,7 +12,7 @@ SETTINGS = DATA / "settings.json"
 USER = os.environ.get("LUMEN_USER", "pi")
 PORT = int(os.environ.get("LUMEN_PORT", "80"))
 IMG = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
-DEFAULTS = {"wallpaper": "aurora", "screensaver": "aurora", "saverMinutes": 5, "ytKey": "", "region": "US"}
+DEFAULTS = {"wallpaper": "aurora", "screensaver": "aurora", "saverMinutes": 5, "ytKey": "", "region": "IN"}
 
 
 def load_settings():
@@ -272,15 +272,28 @@ async def no_cache(req, handler):
     return resp
 
 
+TV_SOCKETS = set()   # Lumen pages open on the TV; they receive voice/text searches from the phone
+
+
 async def ws_handler(req):
     ws = web.WebSocketResponse(heartbeat=20); await ws.prepare(req)
-    async for msg in ws:
-        try:
-            m = json.loads(msg.data)
-            if m.get("t") == "vol": await asyncio.to_thread(handle, m)
-            else: handle(m)
-        except Exception as ex:
-            print("remote:", ex)
+    is_tv = req.query.get("tv") == "1"
+    if is_tv: TV_SOCKETS.add(ws)
+    try:
+        async for msg in ws:
+            try:
+                m = json.loads(msg.data)
+                if m.get("t") == "search":
+                    q = str(m.get("q", "")).strip()[:200]
+                    for tv in list(TV_SOCKETS):
+                        await tv.send_json({"t": "search", "q": q})
+                    await ws.send_json({"t": "note", "msg": "Searching on TV…" if TV_SOCKETS else "Go to the Lumen home screen on the TV first."})
+                elif m.get("t") == "vol": await asyncio.to_thread(handle, m)
+                else: handle(m)
+            except Exception as ex:
+                print("remote:", ex)
+    finally:
+        TV_SOCKETS.discard(ws)
     return ws
 
 

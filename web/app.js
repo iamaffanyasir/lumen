@@ -33,7 +33,8 @@ function tile(o, i, small) {
   const b = document.createElement('button');
   b.className = 'tile' + (small ? ' sm' : '');
   b.style.cssText = `--a:${o.a};--b:${o.b};--i:${i}`;
-  b.innerHTML = `<span class="ic">${ICONS[o.icon] ? svg(o.icon) : esc(o.icon)}</span><span class="nm">${esc(o.name)}</span>`;
+  b.innerHTML = o.logo ? `<span class="lg" style="--m:url(/s/icons/${o.logo}.svg)"></span>`
+    : `<span class="ic">${ICONS[o.icon] ? svg(o.icon) : esc(o.icon)}</span>`;
   b.onfocus = () => hero(o, b);
   b.onmouseenter = () => layer === 'home' && b.focus({ preventScroll: true });
   b.onclick = () => o.act ? o.act() : launch(o, b);
@@ -44,24 +45,25 @@ function hero(o, b) {
   for (const [id, txt] of [['#heroTitle', o.name], ['#heroSub', o.sub || '']]) {
     const el = $(id); el.textContent = txt; el.classList.remove('swap'); void el.offsetWidth; el.classList.add('swap');
   }
-  const root = document.documentElement.style;
-  root.setProperty('--c1', o.a); root.setProperty('--c2', o.a);
-  b.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
-  setTimeout(() => { const r = b.getBoundingClientRect(); root.setProperty('--gx', (r.left + r.width / 2) + 'px'); }, 300);
+  // Slide the row (GPU transform) so the focused tile stays on screen. No layout scrolling.
+  const track = b.parentElement, view = track.parentElement.clientWidth, pad = view * 0.05;
+  const max = Math.max(0, track.scrollWidth - view);
+  const x = Math.min(max, Math.max(0, b.offsetLeft + b.offsetWidth - view + pad * 2));
+  track.style.transform = `translateX(${-x}px)`;
 }
 
 function launch(o, b) {
+  // Grow a coloured layer from the tile to full screen using only transform.
   const r = b.getBoundingClientRect(), L = $('#launch');
   L.className = 'launch';
-  L.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;opacity:1;background:linear-gradient(135deg,${o.a},${o.b})`;
-  L.textContent = o.name;
+  L.style.cssText = `opacity:1;background:${o.a};transform:translate(${r.left}px,${r.top}px) scale(${r.width / innerWidth},${r.height / innerHeight})`;
   void L.offsetWidth; L.classList.add('go');
-  setTimeout(() => location.href = o.url, 600);
+  setTimeout(() => location.href = o.url, 380);
 }
 addEventListener('pageshow', () => { $('#launch').className = 'launch'; $('#launch').style.opacity = 0; });
 
 function homeMove(d) {
-  const rows = [...document.querySelectorAll('#home .row')], cur = document.activeElement;
+  const rows = [...document.querySelectorAll('#home .track')], cur = document.activeElement;
   let r = rows.findIndex(x => x.contains(cur));
   if (r < 0) return rows[0].children[0]?.focus();
   let items = [...rows[r].children], c = items.indexOf(cur);
@@ -116,31 +118,31 @@ function closePanel() {
 function renderPanel() {
   const o = (act, label, on, cls = '') => `<button class="opt${on ? ' on' : ''} ${cls}" data-do="${esc(act)}">${label}</button>`;
   $('#settings').innerHTML = `
-  <h2>Settings</h2>
+  <div class="phead"><button class="opt back" data-do="close:"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m15 6-6 6 6 6"/></svg>Back</button><h2>Settings</h2></div>
   <h3 data-sec="wifi">Wi-Fi</h3>
-  <div>${o('wifi:scan', wifiBusy ? 'Scanning…' : 'Scan for networks')}</div>
+  <div class="opts">${o('wifi:scan', wifiBusy ? 'Scanning…' : 'Scan for networks')}</div>
   <div class="list">${wifi.map(n => `<button class="opt${n.active ? ' on' : ''}" data-do="wifi:join:${esc(n.ssid)}">
     <span>${esc(n.ssid)}</span><small>${n.active ? 'Connected · ' : n.secure ? 'Secured · ' : 'Open · '}<span class="bars">${'▮'.repeat(Math.ceil(n.signal / 25)).padEnd(4, '▯')}</span></small></button>`).join('')
     || '<p class="hint">No networks found yet. Select Scan.</p>'}</div>
   <h3 data-sec="wall">Wallpaper</h3>
-  <div>${PRESETS.map(w => o('wall:' + w, cap(w), S.wallpaper === w)).join('')}
+  <div class="opts">${PRESETS.map(w => o('wall:' + w, cap(w), S.wallpaper === w)).join('')}
   ${walls.map(w => o('wall:img:' + w, 'Photo · ' + esc(w.slice(0, 16)), S.wallpaper === 'img:' + w)).join('')}</div>
   <p class="hint">Add your own photos from the phone remote → More.</p>
   <h3 data-sec="saver">Screensaver</h3>
-  <div>${['aurora', 'clock', 'photos', 'off'].map(v => o('saver:' + v, cap(v), S.screensaver === v)).join('')}</div>
-  <div>${[1, 5, 10, 30].map(m => o('mins:' + m, `After ${m} min`, S.saverMinutes == m)).join('')}</div>
+  <div class="opts">${['aurora', 'clock', 'photos', 'off'].map(v => o('saver:' + v, cap(v), S.screensaver === v)).join('')}</div>
+  <div class="opts">${[1, 5, 10, 30].map(m => o('mins:' + m, `After ${m} min`, S.saverMinutes == m)).join('')}</div>
   <h3 data-sec="bt">Bluetooth</h3>
-  <div>${o('bt:scan', btBusy ? 'Scanning…' : 'Scan for devices')}</div>
+  <div class="opts">${o('bt:scan', btBusy ? 'Scanning…' : 'Scan for devices')}</div>
   <div class="list">${bt.map(d => `<button class="opt" data-do="bt:${d.connected ? 'disconnect' : 'connect'}:${d.mac}">
     <span>${esc(d.name)}</span><small>${d.connected ? 'Connected · select to disconnect' : d.paired ? 'Paired · select to connect' : 'Select to pair'}</small></button>`).join('')
     || '<p class="hint">No devices yet. Put your speaker in pairing mode and scan.</p>'}</div>
   <h3 data-sec="yt">YouTube</h3>
   <input class="txt" id="ytKey" placeholder="YouTube Data API key (for the Lumen YouTube skin)" value="${esc(S.ytKey)}">
-  ${o('yt:save', 'Save key')}
+  <div class="opts">${o('yt:save', 'Save key')}</div>
   <h3 data-sec="remote">Phone remote</h3>
   <p class="big">${esc(info.url)}</p><p class="hint">Or ${esc(info.ipUrl)} · phone must be on the same Wi-Fi.</p>
   <h3 data-sec="sys">System</h3>
-  <div>${o('sys:update', 'Update Lumen')}${o('sys:restart-ui', 'Restart Lumen')}${o('sys:reboot', 'Reboot')}${o('sys:off', 'Power off', false, 'danger')}</div>`;
+  <div class="opts">${o('sys:update', 'Update Lumen')}${o('sys:restart-ui', 'Restart Lumen')}${o('sys:reboot', 'Reboot')}${o('sys:off', 'Power off', false, 'danger')}</div>`;
 }
 function rerender() {
   if (layer !== 'panel') return;
@@ -153,6 +155,7 @@ const split1 = s => { const i = s.indexOf(':'); return i < 0 ? [s, ''] : [s.slic
 $('#settings').addEventListener('click', async e => {
   const b = e.target.closest('[data-do]'); if (!b) return;
   const [k, v] = split1(b.dataset.do);
+  if (k === 'close') return closePanel();
   if (k === 'wifi') {
     if (v === 'scan') { wifiBusy = true; rerender(); wifi = await api('wifi/scan', {}).catch(() => wifi); wifiBusy = false; rerender(); return; }
     return joinWifi(wifi.find(n => n.ssid === split1(v)[1]));
@@ -209,7 +212,7 @@ function joinWifi(n) {
   if (!n) return;
   const connect = async () => {
     const password = $('#wifiPw')?.value || '';
-    modal('Connecting…', `Joining ${n.ssid}`, [], '<div class="prog"><i style="--p:60%"></i></div>');
+    modal('Connecting…', `Joining ${n.ssid}`, [], '<div class="prog"><i style="--s:.6"></i></div>');
     const r = await api('wifi/connect', { ssid: n.ssid, password }).catch(() => ({ ok: false, msg: 'No response' }));
     closeModal(); toast(r.ok ? `Connected to ${n.ssid}` : `Couldn't connect: ${r.msg}`);
     wifi = await api('wifi').catch(() => wifi); info = await api('info').catch(() => info); rerender();
@@ -228,11 +231,11 @@ let updWatch = null;
 function updModal(u) {
   const bar = $('#mExtra .prog i'), pct = $('#mExtra .pct');
   if (bar && pct && layer === 'modal' && u.state !== 'done' && u.state !== 'error') {   // animate the existing bar
-    bar.style.setProperty('--p', u.pct + '%'); pct.textContent = u.pct + '%'; $('#mText').textContent = u.msg; return;
+    bar.style.setProperty('--s', u.pct / 100); pct.textContent = u.pct + '%'; $('#mText').textContent = u.msg; return;
   }
   const btns = u.state === 'done' || u.state === 'error' ? [['OK', () => { clearInterval(updWatch); updWatch = null; closeModal(); }]] : [];
   modal(u.state === 'error' ? 'Update failed' : u.state === 'done' ? 'All set' : 'Updating Lumen',
-    u.msg || '', btns, u.state === 'error' ? '' : `<div class="pct">${u.pct}%</div><div class="prog"><i style="--p:${u.pct}%"></i></div>`);
+    u.msg || '', btns, u.state === 'error' ? '' : `<div class="pct">${u.pct}%</div><div class="prog"><i style="--s:${u.pct / 100}"></i></div>`);
 }
 async function startUpdate() {
   updModal(await api('update', {}).catch(() => ({ state: 'error', pct: 0, msg: 'Lumen server is not responding.' })));
@@ -266,7 +269,7 @@ function showSaver() {
     const next = () => { s.firstChild.style.setProperty('--img', `url("/wallpapers/${encodeURIComponent(walls[i++ % walls.length])}")`); s.firstChild.style.animation = 'none'; void s.offsetWidth; s.firstChild.style.animation = ''; };
     next(); photoTimer = setInterval(next, 15000);
   } else if (type === 'clock') s.innerHTML = clock;
-  else s.innerHTML = `<div class="wall" data-w="${PRESETS.includes(S.wallpaper) ? S.wallpaper : 'aurora'}"><i></i><i></i><i></i></div>` + clock;
+  else s.innerHTML = `<div class="wall" data-w="${PRESETS.includes(S.wallpaper) ? S.wallpaper : 'aurora'}"></div>` + clock;
   tick(); s.classList.remove('hidden');
 }
 function hideSaver() { $('#saver').classList.add('hidden'); clearInterval(photoTimer); }
@@ -302,4 +305,15 @@ setInterval(async () => {
   SYS.forEach((a, i) => $('#sys').append(tile(a, i + apps.length, true)));
   tick(); setInterval(tick, 1000);
   setTimeout(() => $('#apps .tile').focus({ preventScroll: true }), 100);
+})();
+
+// Mouse / touchpad: clicking outside the settings panel or a dialog closes it.
+$('#home').addEventListener('click', e => { if (layer === 'panel') { e.stopPropagation(); closePanel(); } }, true);
+$('#modal').addEventListener('click', e => { if (e.target.id === 'modal' && $('#mBtns').children.length) closeModal(); });
+
+// Searches sent from the phone (typed or spoken) open the YouTube app.
+(function tvSocket() {
+  const ws = new WebSocket(`ws://${location.host}/ws?tv=1`);
+  ws.onmessage = e => { const m = JSON.parse(e.data); if (m.t === 'search' && m.q) location.href = '/s/apps/youtube.html?q=' + encodeURIComponent(m.q); };
+  ws.onclose = () => setTimeout(tvSocket, 2000);
 })();

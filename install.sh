@@ -69,7 +69,7 @@ cat > "$H/.config/autostart/lumen.desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=Lumen
-Exec=$DIR/kiosk.sh
+Exec=/bin/bash $DIR/kiosk.sh
 X-GNOME-Autostart-enabled=true
 EOF
 chown "$U:$U" "$H/.config/autostart/lumen.desktop"

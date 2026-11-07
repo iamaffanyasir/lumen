@@ -6,6 +6,7 @@ while true; do
   "$BROWSER" --kiosk --start-fullscreen --noerrdialogs --disable-infobars --no-first-run \
     --password-store=basic --disable-session-crashed-bubble --hide-crash-restore-bubble \
     --autoplay-policy=no-user-gesture-required --ozone-platform-hint=auto \
+    --ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy \
     --check-for-update-interval=31536000 http://localhost/
   sleep 2
 done
