@@ -609,10 +609,23 @@ async def media_upload(req):
     return web.json_response({"saved": names})
 
 
+REMOTES = set()                    # phone remotes
+NP = {"np": None, "src": None}     # what the TV is playing right now, shown on the phones
+
+
+async def remote_send(m):
+    for r in list(REMOTES):
+        try: await r.send_json(m)
+        except Exception: REMOTES.discard(r)
+
+
 async def ws_handler(req):
     ws = web.WebSocketResponse(heartbeat=20); await ws.prepare(req)
     is_tv = req.query.get("tv") == "1"
     if is_tv: TV_SOCKETS.add(ws)
+    else:
+        REMOTES.add(ws)
+        if NP["np"]: await ws.send_json({"t": "np", "np": NP["np"]})
     try:
         async for msg in ws:
             try:
@@ -631,6 +644,11 @@ async def ws_handler(req):
                     a = find_app(m.get("app"))
                     ok = bool(a) and await open_on_tv(a["url"])
                     await ws.send_json({"t": "note", "msg": f"Opening {a['name']}…" if ok else "Couldn't reach the TV."})
+                elif m.get("t") == "np" and is_tv:      # TV reports what's playing
+                    NP.update(np=m.get("np") or None, src=ws if m.get("np") else None)
+                    await remote_send({"t": "np", "np": NP["np"]})
+                elif m.get("t") == "cmd":               # phone controls the player (captions, seek, speed…)
+                    await tv_send({"t": "cmd", "c": str(m.get("c", ""))[:20], "v": m.get("v")})
                 elif m.get("t") == "vol":
                     await asyncio.to_thread(handle, m)
                     level, muted = await asyncio.to_thread(get_volume)
@@ -642,7 +660,10 @@ async def ws_handler(req):
             except Exception as ex:
                 print("remote:", ex)
     finally:
-        TV_SOCKETS.discard(ws)
+        TV_SOCKETS.discard(ws); REMOTES.discard(ws)
+        if NP["src"] is ws:                     # the playing page closed
+            NP.update(np=None, src=None)
+            await remote_send({"t": "np", "np": None})
     return ws
 
 

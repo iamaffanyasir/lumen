@@ -63,14 +63,58 @@ function slideRow(b) {   // GPU transform keeps the focused tile on screen
   const x = Math.min(Math.max(0, track.scrollWidth - view), Math.max(0, b.offsetLeft + b.offsetWidth - view + pad * 2));
   track.style.transform = `translateX(${-x}px)`;
 }
-function launch(o, b) {
-  const r = b.getBoundingClientRect(), L = $('#launch');
-  L.className = 'launch';
-  L.style.cssText = `opacity:1;background:${o.a};transform:translate(${r.left}px,${r.top}px) scale(${r.width / innerWidth},${r.height / innerHeight})`;
-  void L.offsetWidth; L.classList.add('go');
-  setTimeout(() => location.href = o.url, 380);
+/* App open/close animations. Only transform and opacity change, so the Pi's GPU does the work. */
+const EASE = 'cubic-bezier(.3,.9,.25,1)';
+const boxXf = r => `translate(${r.left}px,${r.top}px) scale(${r.width / innerWidth},${r.height / innerHeight})`;
+function logoXf(r) {   // move the big centred logo onto a tile's logo
+  const s = innerHeight * .18, k = Math.min(r.width, r.height) / s;
+  return `translate(${r.left + r.width / 2 - innerWidth / 2}px,${r.top + r.height / 2 - innerHeight / 2}px) scale(${k})`;
 }
-addEventListener('pageshow', () => { $('#launch').className = 'launch'; $('#launch').style.opacity = 0; });
+function tween(el, from, to, ms) {
+  el.style.transition = 'none'; Object.assign(el.style, from); void el.offsetWidth;
+  el.style.transition = `transform ${ms}ms ${EASE},opacity ${Math.min(ms, 260)}ms ease`; Object.assign(el.style, to);
+}
+let launching = false;
+function launch(o, b) {
+  if (launching) return; launching = true;
+  const L = $('#launch'), G = $('#launchLogo'), r = b.getBoundingClientRect(), lr = b.querySelector('.lg').getBoundingClientRect();
+  try { sessionStorage.setItem('lumen.app', JSON.stringify({ name: o.name, a: o.a, logo: o.logo })); } catch { }
+  G.style.setProperty('--m', `url(/s/icons/${o.logo}.svg)`);
+  tween(L, { background: o.a, opacity: 1, transform: boxXf(r) }, { transform: 'none' }, 460);
+  tween(G, { opacity: 0, transform: logoXf(lr) }, { opacity: 1, transform: 'none' }, 460);
+  setTimeout(() => location.href = o.url, 600);
+}
+function coverFromApp() {   // coming back from an app: start fully covered by its colour and logo
+  let s = null; try { s = JSON.parse(sessionStorage.getItem('lumen.app')); sessionStorage.removeItem('lumen.app'); } catch { }
+  if (!s) return null;
+  const L = $('#launch'), G = $('#launchLogo');
+  G.style.setProperty('--m', `url(/s/icons/${s.logo}.svg)`);
+  tween(L, {}, { background: s.a, opacity: 1, transform: 'none' }, 0);
+  tween(G, {}, { opacity: 1, transform: 'none' }, 0);
+  document.body.classList.add('returning');
+  return s;
+}
+function closeAnim(s) {
+  const L = $('#launch'), G = $('#launchLogo'), b = [...document.querySelectorAll('#apps .tile')][apps.findIndex(a => a.name === s.name)];
+  const done = () => { L.style.transition = G.style.transition = 'opacity .2s ease'; L.style.opacity = G.style.opacity = 0;
+    setTimeout(() => document.body.classList.remove('returning'), 220); launching = false; };
+  if (!b) { (document.querySelector('#apps .tile'))?.focus({ preventScroll: true }); return done(); }
+  const track = b.parentElement; track.style.transition = 'none';
+  b.focus({ preventScroll: true });
+  const r = b.getBoundingClientRect(), lr = b.querySelector('.lg').getBoundingClientRect();
+  requestAnimationFrame(() => {
+    track.style.transition = '';
+    tween(L, {}, { transform: boxXf(r) }, 420);
+    tween(G, {}, { transform: logoXf(lr) }, 420);
+    setTimeout(done, 380);
+  });
+}
+addEventListener('pageshow', e => {   // back/forward cache: the page was kept, so replay the close animation
+  if (!e.persisted) return;
+  launching = false;
+  const s = coverFromApp();
+  if (s) closeAnim(s); else { $('#launch').style.opacity = 0; $('#launchLogo').style.opacity = 0; }
+});
 
 function homeMove(d) {
   const rows = [...document.querySelectorAll('#home [data-nav]')], cur = document.activeElement;
@@ -177,7 +221,7 @@ const SHEETS = {
     <p class="hint">Add your own photos from the phone remote → More → Upload photo.</p>`,
   saver: () => `<div class="list">${tg('saveron:', 'Screensaver', S.saverOn)}</div>
     <h3>Style</h3><div class="pvgrid" style="grid-template-columns:repeat(3,1fr)">
-    ${pvb('saver:clock', 'Clock', S.screensaver === 'clock', 'style="background:#000"', nowTxt(S.clock12))}
+    ${pvb('saver:clock', 'Wallpaper', S.screensaver === 'clock', 'style="background:#000"', nowTxt(S.clock12))}
     ${pvb('saver:aurora', 'Aurora', S.screensaver === 'aurora', 'data-w="aurora"', nowTxt(S.clock12))}
     ${pvb('saver:photos', 'Photos', S.screensaver === 'photos', walls[0] ? `style="background-image:url('/wallpapers/${encodeURIComponent(walls[0])}')"` : 'data-w="graphite"', walls[0] ? '' : '<small style="font-size:.8rem">No photos yet</small>')}</div>
     <h3>Start after</h3><div class="opts">${[1, 5, 10, 30].map(m => o('mins:' + m, m + ' min', S.saverMinutes == m)).join('')}</div>`,
@@ -343,20 +387,40 @@ function tick() {
   const d = new Date(), t = timeParts(d), day = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
   const html = `${t.t}${t.ap ? `<span class="ap">${t.ap}</span>` : ''}<small>${day}</small>`;
   $('#clock').innerHTML = html;
-  const sc = $('.sclock'); if (sc) sc.innerHTML = html;
+  if ($('#flip')) { setFlip(t); $('#sdate').textContent = day; }
+}
+/* flip clock: each digit is a card; when it changes, the top half folds down onto the new digit */
+let flipVals = [];
+const half = (cls, v) => `<span class="h ${cls}"><i>${v}</i></span>`;
+function setFlip(t) {
+  const digits = t.t.replace(':', '').padStart(4, '0').split(''), cards = document.querySelectorAll('#flip .fd');
+  digits.forEach((d, i) => {
+    const el = cards[i], old = flipVals[i];
+    if (old === d) return;
+    if (old === undefined) { el.innerHTML = half('t', d) + half('b', d); return; }
+    el.innerHTML = half('t', d) + half('b', old) + half('t f1', old) + half('b f2', d);
+    clearTimeout(el._t); el._t = setTimeout(() => el.innerHTML = half('t', d) + half('b', d), 720);
+  });
+  flipVals = digits;
+  $('#flip .fap').textContent = t.ap;
 }
 let photoTimer;
 function showSaver() {
-  const s = $('#saver'), type = S.screensaver, clock = '<div class="sclock"></div>';
+  const s = $('#saver'), type = S.screensaver, w = $('#wall');
+  const clock = `<img class="slogo" src="/s/logo.png" alt=""><div class="flip" id="flip"><div class="fg"><div class="fd"></div><div class="fd"></div></div>
+    <div class="fsep"><i></i><i></i></div><div class="fg"><div class="fd"></div><div class="fd"></div></div><div class="fap"></div></div><div class="sdate" id="sdate"></div>`;
+  let bg;
+  if (type === 'photos' && walls.length) bg = '<div class="wall img sbg sil"></div>';
+  else if (type === 'aurora') bg = '<div class="wall sbg sil" data-w="aurora"></div>';
+  else bg = `<div class="${w.className} sbg sil" ${w.dataset.w ? `data-w="${w.dataset.w}"` : ''} style="${esc(w.getAttribute('style') || '')}"></div>`;   // your wallpaper, dimmed
+  s.innerHTML = bg + clock; flipVals = [];
   if (type === 'photos' && walls.length) {
-    let i = 0; s.innerHTML = '<div class="wall img"></div>' + clock;
-    const next = () => s.firstChild.style.setProperty('--img', `url("/wallpapers/${encodeURIComponent(walls[i++ % walls.length])}")`);
+    let i = 0; const next = () => s.firstChild.style.setProperty('--img', `url("/wallpapers/${encodeURIComponent(walls[i++ % walls.length])}")`);
     next(); photoTimer = setInterval(next, 15000);
-  } else if (type === 'aurora') s.innerHTML = '<div class="wall" data-w="aurora"></div>' + clock;
-  else s.innerHTML = clock;
+  }
   tick(); s.classList.remove('hidden');
 }
-function hideSaver() { $('#saver').classList.add('hidden'); clearInterval(photoTimer); }
+function hideSaver() { $('#saver').classList.add('hidden'); clearInterval(photoTimer); setTimeout(() => { if ($('#saver').classList.contains('hidden')) $('#saver').innerHTML = ''; }, 900); }
 setInterval(() => {
   if (S.saverOn && (layer === 'home' || layer === 'news') && $('#saver').classList.contains('hidden') && Date.now() - idle > (S.saverMinutes || 5) * 60000) showSaver();
 }, 5000);
@@ -494,18 +558,23 @@ setInterval(async () => { wifi = await api('wifi').catch(() => wifi); wifiIcon()
     const m = JSON.parse(e.data);
     if (m.t === 'search' && m.q) location.href = '/s/apps/youtube.html?q=' + encodeURIComponent(m.q);
     if (m.t === 'vol') window.lumenVolume?.(m.v, m.muted);
-    if (m.t === 'open' && m.url) location.href = m.url;   // app or sign-in page picked on the phone
+    if (m.t === 'open' && m.url) {   // app or sign-in page picked on the phone
+      const i = apps.findIndex(a => a.url === m.url), b = document.querySelectorAll('#apps .tile')[i];
+      if (b && layer === 'home') launch(apps[i], b); else location.href = m.url;
+    }
   };
   ws.onclose = () => setTimeout(tvSocket, 2000);
 })();
 
 (async () => {
+  const back = coverFromApp();
   [S, apps, walls, info] = await Promise.all([api('settings'), fetch('/s/apps.json').then(r => r.json()), api('wallpapers'), api('info')]);
   applyWall();
   apps.forEach((a, i) => $('#apps').append(tile(a, i)));
   tick(); setInterval(tick, 1000);
   renderWidgets();
-  setTimeout(() => $('#apps .tile').focus({ preventScroll: true }), 100);
+  if (back) requestAnimationFrame(() => closeAnim(back));
+  else setTimeout(() => $('#apps .tile').focus({ preventScroll: true }), 100);
   if (location.search === '?shot=news') setTimeout(goNews, 1500);   // used for screenshots
   wifi = await api('wifi').catch(() => []); wifiIcon();
 })();

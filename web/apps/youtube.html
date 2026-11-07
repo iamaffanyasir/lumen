@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>YouTube · Lumen</title><link rel="stylesheet" href="/s/style.css">
+<html lang="en" data-name="YouTube" data-color="#e62117" data-logo="youtube"><head><meta charset="utf-8"><title>YouTube · Lumen</title><link rel="stylesheet" href="/s/style.css">
 <style>
 :root{--yt:#ff0033;--ybg:#0b0709}
 html{background:var(--ybg)}
@@ -86,6 +86,7 @@ input.bi::placeholder{color:#9a9aa5}
 .state.on{opacity:1;transform:none}
 </style></head>
 <body>
+<script src="/s/appshell.js"></script>
 <div class="wall"></div>
 <div class="hbg" id="hbg"></div>
 <div class="yt">
@@ -218,7 +219,7 @@ function focusCard(c) {
   hero(item(c));
 }
 const item = c => rowsData[c.dataset.r]?.items[c.dataset.i];
-function showMsg(title, text, btns = [['Try again', () => go(tab)], ['Back to Lumen', () => location.href = '/']], focus = true) {
+function showMsg(title, text, btns = [['Try again', () => go(tab)], ['Back to Lumen', () => lumenExit()]], focus = true) {
   rowsData = []; hero(null);
   R.style.transform = 'none';
   R.innerHTML = `<div class="msg"><h2>${esc(title)}</h2><p>${text}</p><div class="opts">${btns.map((b, i) => `<button class="opt" data-b="${i}">${esc(b[0])}</button>`).join('')}</div></div>`;
@@ -319,7 +320,51 @@ function saveHist(v, pos, len) {
   hist = [{ ...h, ts: Date.now() / 1000 }, ...hist.filter(x => x.id !== v.id)];
   fetch('/api/yt/history', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(h) }).catch(() => { });
 }
-let saveI;
+let saveI, started = false;
+const ytPrefs = (() => { try { return JSON.parse(localStorage.getItem('yt.prefs')) || {}; } catch { return {}; } })();
+const savePrefs = () => { try { localStorage.setItem('yt.prefs', JSON.stringify(ytPrefs)); } catch { } };
+function applyCC() {   // captions follow the choice made on the phone
+  try {
+    const pref = ytPrefs.cc || 'off';
+    if (pref === 'off') { yp.setOption('captions', 'track', {}); return; }
+    const list = yp.getOption('captions', 'tracklist') || [];
+    const t = list.find(x => x.languageCode === pref) || list.find(x => x.languageCode?.split('-')[0] === pref.split('-')[0]) || list[0];
+    if (t) yp.setOption('captions', 'track', { languageCode: t.languageCode });
+    if (ytPrefs.ccSize != null) yp.setOption('captions', 'fontSize', ytPrefs.ccSize);
+  } catch { }
+}
+function applyQuality() { try { if (ytPrefs.q && ytPrefs.q !== 'auto') yp.setPlaybackQuality(ytPrefs.q); } catch { } }
+function npState() {
+  if (!playing() || !yp?.getPlayerState) return null;
+  const v = cur && item(cur); if (!v) return null;
+  let tracks = [], track = null, size = 1;
+  try {
+    tracks = (yp.getOption('captions', 'tracklist') || []).map(t => ({ code: t.languageCode, name: t.displayName || t.languageName || t.languageCode }));
+    track = yp.getOption('captions', 'track')?.languageCode || null;
+    size = yp.getOption('captions', 'fontSize') ?? 1;
+  } catch { }
+  return { app: 'youtube', title: v.title, sub: v.channel, thumb: v.thumb, playing: yp.getPlayerState() === 1,
+    pos: yp.getCurrentTime?.() || 0, dur: yp.getDuration?.() || v.dur || 0,
+    rate: yp.getPlaybackRate?.() || 1, rates: yp.getAvailablePlaybackRates?.() || [1],
+    quality: yp.getPlaybackQuality?.() || '', qualities: (yp.getAvailableQualityLevels?.() || []).filter(q => q !== 'auto'), qpref: ytPrefs.q || 'auto',
+    cc: { track, tracks, size, pref: ytPrefs.cc || 'off' }, next: !!cur.nextElementSibling, prev: !!cur.previousElementSibling, stop: true };
+}
+const npTick = () => window.lumenNP?.(npState());
+setInterval(() => playing() && npTick(), 2000);
+function cmd(c, v) {   // commands from the phone remote
+  if (!playing() || !yp?.getPlayerState) return;
+  if (c === 'toggle') toggle();
+  else if (c === 'seek') { yp.seekTo(Math.max(0, +v || 0), true); osd(); }
+  else if (c === 'skip') seek(+v || 10);
+  else if (c === 'next') next();
+  else if (c === 'prev') { const p = cur?.previousElementSibling; if (p) { focusCard(p); play(p); } }
+  else if (c === 'stop') return close();
+  else if (c === 'cc') { ytPrefs.cc = String(v || 'off'); yp.loadModule?.('captions'); applyCC(); flash(ytPrefs.cc === 'off' ? 'CC off' : 'CC on'); }
+  else if (c === 'ccsize') { ytPrefs.ccSize = Math.max(-1, Math.min(3, +v || 0)); applyCC(); }
+  else if (c === 'rate') { ytPrefs.rate = +v || 1; yp.setPlaybackRate(ytPrefs.rate); flash(ytPrefs.rate + '×'); }
+  else if (c === 'quality') { ytPrefs.q = String(v || 'auto'); applyQuality(); }
+  savePrefs(); setTimeout(npTick, 400);
+}
 async function play(card) {
   cur = card; const v = item(card); if (!v) return;
   const old = hist.find(h => h.id === v.id), start = old && unfinished(old) ? old.pos : 0;
@@ -327,9 +372,16 @@ async function play(card) {
   $('#player').classList.add('on'); osd(); saveHist(v, start, v.dur);
   await loadApi();
   clearInterval(saveI); saveI = setInterval(() => yp?.getCurrentTime && saveHist(v, yp.getCurrentTime(), yp.getDuration()), 15000);
-  if (yp) { yp.loadVideoById({ videoId: v.id, startSeconds: start }); return; }
+  started = false;
+  if (yp) { yp.loadVideoById({ videoId: v.id, startSeconds: start, suggestedQuality: ytPrefs.q || 'default' }); return; }
   yp = new YT.Player('yp', { videoId: v.id, playerVars: { autoplay: 1, controls: 0, rel: 0, iv_load_policy: 3, fs: 0, disablekb: 1, playsinline: 1, start: Math.floor(start) },
-    events: { onStateChange: e => { if (e.data === YT.PlayerState.ENDED) next(); },
+    events: { onStateChange: e => {
+                if (e.data === YT.PlayerState.PLAYING && !started) {   // first frame of a new video: apply your settings
+                  started = true; yp.loadModule?.('captions'); applyCC(); applyQuality(); if (ytPrefs.rate) yp.setPlaybackRate(ytPrefs.rate);
+                }
+                if (e.data === YT.PlayerState.ENDED) next(); npTick();
+              },
+              onApiChange: () => { applyCC(); npTick(); },
               onError: () => { flash('This video can only play on youtube.com'); setTimeout(next, 2500); } } });
 }
 function next() {   // auto-play the next video in the same row
@@ -338,7 +390,7 @@ function next() {   // auto-play the next video in the same row
 }
 function close() {
   const v = cur && item(cur); if (v && yp?.getCurrentTime) saveHist(v, yp.getCurrentTime(), yp.getDuration());
-  clearInterval(saveI); yp?.stopVideo?.(); $('#player').classList.remove('on'); $('#osd').classList.remove('on'); cur && focusCard(cur);
+  clearInterval(saveI); yp?.stopVideo?.(); window.lumenNP?.(null); $('#player').classList.remove('on'); $('#osd').classList.remove('on'); cur && focusCard(cur);
 }
 const playing = () => $('#player').classList.contains('on');
 let osdT, osdI;
@@ -377,7 +429,7 @@ addEventListener('keydown', e => {
   if (back) {
     e.preventDefault();
     if (!inBar) return (barItems().find(b => b.classList.contains('on')) || Q).focus();
-    return tab === 'home' ? (location.href = '/') : go('home');
+    return tab === 'home' ? (lumenExit()) : go('home');
   }
   if (inBar) {
     if (a === Q) {
@@ -414,12 +466,14 @@ $('#player').addEventListener('mousemove', osd);
 
 /* ---------- messages from the phone remote ---------- */
 (function sock() {
-  const ws = new WebSocket(`ws://${location.host}/ws?tv=1`);
+  const ws = window.lumenWS = new WebSocket(`ws://${location.host}/ws?tv=1`);
+  ws.onopen = () => window.lumenNPResend?.();
   ws.onmessage = e => {
     const m = JSON.parse(e.data);
+    if (m.t === 'cmd') cmd(m.c, m.v);
     if (m.t === 'search') { if (playing()) close(); if (ovOn()) closeOv(); doSearch(m.q); }
     if (m.t === 'vol') window.lumenVolume?.(m.v, m.muted);
-    if (m.t === 'open' && m.url && !m.url.startsWith('/s/apps/youtube.html')) { if (playing()) close(); location.href = m.url; }
+    if (m.t === 'open' && m.url && !m.url.startsWith('/s/apps/youtube.html')) { if (playing()) close(); lumenExit(m.url); }
     if (m.t === 'ytcode') { if (m.code) { if (playing()) close(); showCode(m.code, m.url); } else if ($('#ov').dataset.kind === 'code') closeOv(); }
     if (m.t === 'ytsigned') onSigned();
   };
@@ -432,7 +486,7 @@ $('#player').addEventListener('mousemove', osd);
   key = s.ytKey || ''; region = s.region || 'IN'; hist = Array.isArray(h) ? h : [];
   if (!key && !token) {
     showMsg('Set up YouTube', 'Sign in with your Google account (phone remote → <b>Sign in</b> → YouTube),<br>or add a free YouTube API key (phone remote → <b>More</b>). The Lumen README has the steps.',
-      [['Sign in', signIn], ['Open classic YouTube', () => location.href = 'https://www.youtube.com'], ['Back to Lumen', () => location.href = '/']]);
+      [['Sign in', signIn], ['Open classic YouTube', () => location.href = 'https://www.youtube.com'], ['Back to Lumen', () => lumenExit()]]);
   } else {
     loadMe();
     const q = new URLSearchParams(location.search).get('q');

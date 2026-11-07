@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>Videos · Lumen</title><link rel="stylesheet" href="/s/style.css">
+<html lang="en" data-name="Videos" data-color="#ff9f0a" data-logo="video"><head><meta charset="utf-8"><title>Videos · Lumen</title><link rel="stylesheet" href="/s/style.css">
 <style>
 :root{--v:#ff9f0a;--vbg:#0b0907}
 html{background:var(--vbg)}
@@ -46,6 +46,7 @@ html{background:var(--vbg)}
 .state.on{opacity:1;transform:translate(-50%,-50%)}
 </style></head>
 <body>
+<script src="/s/appshell.js"></script>
 <div class="wall"></div>
 <div class="app">
   <div class="bar"><div class="logo"><i></i>Videos</div><span id="count"></span></div>
@@ -71,7 +72,7 @@ let files = [], rowsData = [], cur = null, pos = store.get('vd.pos', {});   // p
 
 function build(roots) {
   if (!files.length) {
-    R.innerHTML = `<div class="empty"><h2>No videos yet</h2><p>Copy videos into <code>${esc(roots[0] || '~/Videos')}</code> on the Pi, plug in a USB drive,<br>or upload from your phone: phone remote → More → Add videos.<br>MP4 and WebM play best.</p><div style="display:flex;gap:.8rem;justify-content:center"><button class="opt" onclick="location.reload()">Refresh</button><button class="opt" onclick="location.href='/'">Back to Lumen</button></div></div>`;
+    R.innerHTML = `<div class="empty"><h2>No videos yet</h2><p>Copy videos into <code>${esc(roots[0] || '~/Videos')}</code> on the Pi, plug in a USB drive,<br>or upload from your phone: phone remote → More → Add videos.<br>MP4 and WebM play best.</p><div style="display:flex;gap:.8rem;justify-content:center"><button class="opt" onclick="location.reload()">Refresh</button><button class="opt" onclick="lumenExit()">Back to Lumen</button></div></div>`;
     return R.querySelector('.opt').focus();
   }
   $('#count').textContent = `${files.length} video${files.length > 1 ? 's' : ''}`;
@@ -113,7 +114,26 @@ function play(card) {
   vd.play().catch(() => { });
   $('#oT').textContent = nice(f.name); $('#player').classList.add('on'); osd();
 }
-function close() { save(); vd.pause(); vd.removeAttribute('src'); vd.load(); $('#player').classList.remove('on'); $('#osd').classList.remove('on'); build([]); const c = cur && [...R.querySelectorAll('.card')].find(x => item(x)?.path === cur.f.path); focusCard(c || R.querySelector('.card')); }
+function close() { save(); window.lumenNP?.(null); vd.pause(); vd.removeAttribute('src'); vd.load(); $('#player').classList.remove('on'); $('#osd').classList.remove('on'); build([]); const c = cur && [...R.querySelectorAll('.card')].find(x => item(x)?.path === cur.f.path); focusCard(c || R.querySelector('.card')); }
+function npState() {
+  if (!playing() || !cur) return null;
+  return { app: 'videos', title: nice(cur.f.name), sub: cur.f.folder, thumb: '/thumb/' + enc(cur.f.path), playing: !vd.paused,
+    pos: vd.currentTime || 0, dur: vd.duration || 0, rate: vd.playbackRate, rates: [0.5, 0.75, 1, 1.25, 1.5, 2],
+    next: !!cur.card.nextElementSibling, prev: !!cur.card.previousElementSibling, stop: true };
+}
+const npTick = () => window.lumenNP?.(npState());
+setInterval(() => playing() && !vd.paused && npTick(), 2000);
+for (const ev of ['play', 'pause', 'seeked', 'loadedmetadata', 'ratechange']) vd.addEventListener(ev, npTick);
+function cmd(c, v) {   // commands from the phone remote
+  if (!playing()) return;
+  if (c === 'toggle') toggle();
+  else if (c === 'seek' && vd.duration) { vd.currentTime = Math.max(0, Math.min(vd.duration - 1, +v || 0)); osd(); }
+  else if (c === 'skip') seek(+v || 10);
+  else if (c === 'next') { const n = cur.card.nextElementSibling; if (n) { save(); focusCard(n); play(n); } }
+  else if (c === 'prev') { const p = cur.card.previousElementSibling; if (p) { save(); focusCard(p); play(p); } }
+  else if (c === 'rate') { vd.playbackRate = +v || 1; flash(vd.playbackRate + '×'); }
+  else if (c === 'stop') close();
+}
 vd.onended = () => { save(); const n = cur?.card.nextElementSibling; n ? (focusCard(n), play(n)) : close(); };
 vd.onerror = () => { if (playing()) { flash("This video format can't play here"); setTimeout(close, 2500); } };
 setInterval(() => playing() && !vd.paused && save(), 10000);
@@ -136,7 +156,7 @@ addEventListener('keydown', e => {
     else if (k === 'ArrowUp') seek(60); else if (k === 'ArrowDown') seek(-60); else osd();
     return;
   }
-  if (back) { e.preventDefault(); return location.href = '/'; }
+  if (back) { e.preventDefault(); return lumenExit(); }
   if (!a?.classList.contains('card')) { if (k.startsWith('Arrow')) { e.preventDefault(); const c = R.querySelector('.card'); c ? focusCard(c) : R.querySelector('.opt')?.focus(); } return; }
   const r = +a.dataset.r, i = +a.dataset.i, rows = R.querySelectorAll('.track');
   let t = null;
@@ -151,10 +171,12 @@ $('#player').addEventListener('click', toggle);
 $('#player').addEventListener('mousemove', osd);
 
 (function sock() {
-  const ws = new WebSocket(`ws://${location.host}/ws?tv=1`);
+  const ws = window.lumenWS = new WebSocket(`ws://${location.host}/ws?tv=1`);
+  ws.onopen = () => window.lumenNPResend?.();
   ws.onmessage = e => { const m = JSON.parse(e.data);
+    if (m.t === 'cmd') cmd(m.c, m.v);
     if (m.t === 'vol') window.lumenVolume?.(m.v, m.muted);
-    if (m.t === 'open' && m.url) { save(); location.href = m.url; }
+    if (m.t === 'open' && m.url) { save(); lumenExit(m.url); }
     if (m.t === 'search') location.href = '/s/apps/youtube.html?q=' + encodeURIComponent(m.q); };
   ws.onclose = () => setTimeout(sock, 2000);
 })();

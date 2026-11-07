@@ -1,3 +1,6 @@
 # Your settings and uploaded wallpapers stay on the Pi
 data/
 __pycache__/
+
+# Website project cloned here; it has its own repo
+Visualter/

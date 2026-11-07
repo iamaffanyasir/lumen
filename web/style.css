@@ -52,8 +52,12 @@ body.dim #home{opacity:.3}
 @keyframes fade{from{opacity:0}}
 
 /* ---------- minimal widgets along the bottom ---------- */
-.widgets{display:grid;grid-template-columns:var(--cols);gap:3.2vw;padding:3vh 4.5vw 0;margin-top:auto}
-.wg{border-top:1px solid rgba(255,255,255,.12);padding-top:1.3rem;min-height:15vh;animation:fade .6s backwards}
+.widgets{display:grid;grid-template-columns:var(--cols);gap:1.3vw;padding:3vh 4.5vw 0;margin-top:auto}
+.wg{position:relative;overflow:hidden;min-height:17vh;padding:1.35rem 1.5rem;border-radius:22px;border:1px solid rgba(255,255,255,.08);
+  background:linear-gradient(155deg,var(--wa,rgba(255,255,255,.1)) 0,rgba(255,255,255,.03) 60%),rgba(14,16,28,.62);
+  box-shadow:0 20px 40px -26px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.06);animation:rise .6s var(--ease) backwards}
+.wg:nth-child(2){animation-delay:60ms}.wg:nth-child(3){animation-delay:120ms}.wg:nth-child(4){animation-delay:180ms}
+#w-weather{--wa:rgba(77,143,255,.3)}#w-prayer{--wa:rgba(139,92,246,.3)}#w-moon{--wa:rgba(148,163,200,.22)}#w-hadith{--wa:rgba(16,185,129,.24)}
 .wg h4{font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);font-weight:600;margin-bottom:.9rem}
 .wl{display:flex;align-items:center;gap:.9rem}
 .wl svg{width:2.4rem;height:2.4rem;flex:0 0 auto}
@@ -151,11 +155,33 @@ body.dim #home{opacity:.3}
 .pct{font-size:2.4rem;font-weight:800;margin-bottom:.5rem;font-variant-numeric:tabular-nums}
 .saver{position:fixed;inset:0;z-index:50;background:#000;transition:opacity .8s}
 .saver .wall{position:absolute}
-.sclock{position:absolute;z-index:1;left:8vw;top:12vh;font-size:8vw;font-weight:200;font-variant-numeric:tabular-nums;will-change:transform;animation:float 120s linear infinite alternate}
-.sclock .ap{font-size:2vw;margin-left:.6vw;color:rgba(255,255,255,.6)}
-.sclock small{display:block;font-size:1.6vw;color:rgba(255,255,255,.65);letter-spacing:.15em;font-weight:400}
-@keyframes float{25%{transform:translate(45vw,10vh)}50%{transform:translate(20vw,50vh)}75%{transform:translate(50vw,40vh)}100%{transform:translate(5vw,45vh)}}
-.launch{position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:60;pointer-events:none;opacity:0;transform-origin:0 0;will-change:transform}
-.launch.go{transition:transform .4s var(--ease);transform:none!important}
+/* flip clock screensaver: your wallpaper dimmed behind a centred flip clock */
+.saver .sbg{position:absolute;inset:0}
+.saver .sbg.sil::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(0,0,0,.42) 0,rgba(0,0,0,.86) 75%)}
+.slogo{position:absolute;z-index:2;top:5vh;right:4vw;height:4.4vh;opacity:.85;filter:drop-shadow(0 0 14px rgba(155,107,255,.45))}
+.flip{position:absolute;z-index:2;left:50%;top:50%;transform:translate(-50%,-58%);display:flex;align-items:center;gap:1.6vw}
+.fg{display:flex;gap:.8vw}
+.fd{position:relative;width:10.5vw;height:14.5vw;perspective:50vw;font-size:11.5vw;font-weight:700;color:#f2f2f6;font-variant-numeric:tabular-nums;
+  border-radius:1.2vw;box-shadow:0 2.2vw 4vw -1vw rgba(0,0,0,.7)}
+.fd .h{position:absolute;left:0;right:0;height:50%;overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.fd .t{top:0;border-radius:1.2vw 1.2vw 0 0;background:#1e1f28;transform-origin:50% 100%}
+.fd .b{bottom:0;border-radius:0 0 1.2vw 1.2vw;background:#191a22;transform-origin:50% 0}
+.fd i{position:absolute;left:0;right:0;height:200%;display:grid;place-items:center;font-style:normal;line-height:1}
+.fd .t i{top:0}.fd .b i{bottom:0}
+.fd::after{content:"";position:absolute;z-index:5;left:0;right:0;top:50%;height:.3vw;margin-top:-.15vw;background:rgba(0,0,0,.6)}
+.fd .f1{z-index:3;will-change:transform;animation:flipA .3s ease-in forwards}
+.fd .f2{z-index:3;will-change:transform;transform:rotateX(90deg);animation:flipB .3s .3s ease-out forwards}
+@keyframes flipA{to{transform:rotateX(-90deg)}}
+@keyframes flipB{from{transform:rotateX(90deg)}to{transform:none}}
+.fsep{display:flex;flex-direction:column;gap:2.6vw}.fsep i{width:1vw;height:1vw;border-radius:50%;background:rgba(255,255,255,.8)}
+.fap{align-self:flex-end;font-size:1.8vw;font-weight:700;letter-spacing:.12em;color:rgba(255,255,255,.75);margin-left:.2vw}
+.fap:empty{display:none}
+.sdate{position:absolute;z-index:2;left:0;right:0;top:calc(50% + 8.6vw);text-align:center;font-size:1.5vw;letter-spacing:.24em;text-transform:uppercase;color:rgba(255,255,255,.72)}
+
+/* app open/close: the tile grows into the app colour with its logo */
+.launch{position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:60;pointer-events:none;opacity:0;transform-origin:0 0;will-change:transform,opacity}
+.llogo{position:fixed;left:50%;top:50%;width:18vh;height:18vh;margin:-9vh 0 0 -9vh;z-index:61;pointer-events:none;opacity:0;background:#fff;
+  -webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat;will-change:transform,opacity}
+body.returning .tile{animation:none}
 #toast{position:fixed;bottom:5vh;left:50%;transform:translate(-50%,250%);padding:1rem 1.5rem;border-radius:14px;background:#181b2c;border:1px solid #2a2e45;transition:transform .35s var(--ease),opacity .3s;opacity:0;z-index:70;max-width:70vw}
 #toast.show{transform:translate(-50%,0);opacity:1}

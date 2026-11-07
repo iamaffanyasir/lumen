@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>Music · Lumen</title><link rel="stylesheet" href="/s/style.css">
+<html lang="en" data-name="Music" data-color="#ff2d75" data-logo="music"><head><meta charset="utf-8"><title>Music · Lumen</title><link rel="stylesheet" href="/s/style.css">
 <style>
 :root{--m:#ff2d75;--mbg:#0c0710}
 html{background:var(--mbg)}
@@ -50,6 +50,7 @@ html{background:var(--mbg)}
 .empty .opt:focus{background:#fff;color:#111}
 </style></head>
 <body>
+<script src="/s/appshell.js"></script>
 <div class="wall"></div>
 <div class="app" id="app">
   <div class="bar"><div class="logo"><i></i>Music</div><span id="count"></span></div>
@@ -79,7 +80,7 @@ let files = [], folders = [], fi = 0, shown = [], queue = [], qi = -1, shuffle =
 function build() {
   const app = $('#app');
   if (!files.length) {
-    app.insertAdjacentHTML('beforeend', `<div class="empty"><h2>No music yet</h2><p>Copy songs into <code>${esc(roots[0] || '~/Music')}</code> on the Pi, plug in a USB drive,<br>or upload from your phone: phone remote → More → Add music.</p><div class="opts" style="display:flex;gap:.8rem;justify-content:center"><button class="opt" onclick="location.reload()">Refresh</button><button class="opt" onclick="location.href='/'">Back to Lumen</button></div></div>`);
+    app.insertAdjacentHTML('beforeend', `<div class="empty"><h2>No music yet</h2><p>Copy songs into <code>${esc(roots[0] || '~/Music')}</code> on the Pi, plug in a USB drive,<br>or upload from your phone: phone remote → More → Add music.</p><div class="opts" style="display:flex;gap:.8rem;justify-content:center"><button class="opt" onclick="location.reload()">Refresh</button><button class="opt" onclick="lumenExit()">Back to Lumen</button></div></div>`);
     return $('.empty .opt').focus();
   }
   const by = {}; files.forEach(f => (by[f.folder] ||= []).push(f));
@@ -129,6 +130,22 @@ function ctl(c) {
 function modes() { $('[data-c=shuffle]')?.classList.toggle('act', shuffle); $('[data-c=repeat]')?.classList.toggle('act', repeat); }
 au.onplay = au.onpause = () => { $('#np')?.classList.toggle('paused', au.paused); document.body.classList.toggle('paused', au.paused); $('[data-c=toggle]').innerHTML = au.paused ? IC.play : IC.pause; };
 au.ontimeupdate = () => { const d = au.duration || 0; $('#pB').style.transform = `scaleX(${d ? au.currentTime / d : 0})`; $('#pN').textContent = fmt(au.currentTime); $('#pD').textContent = fmt(d); };
+function npState() {
+  const f = queue[qi]; if (!f || !au.src) return null;
+  const m = meta(f);
+  return { app: 'music', title: m.title, sub: m.artist, thumb: f.cover ? '/media/music/' + enc(f.cover) : '', playing: !au.paused,
+    pos: au.currentTime || 0, dur: au.duration || 0, rate: 1, next: true, prev: true, shuffle, repeat };
+}
+const npTick = () => window.lumenNP?.(npState());
+setInterval(() => !au.paused && npTick(), 2000);
+for (const ev of ['play', 'pause', 'seeked', 'loadedmetadata']) au.addEventListener(ev, npTick);
+function cmd(c, v) {   // commands from the phone remote
+  if (c === 'toggle' || c === 'next' || c === 'prev' || c === 'shuffle' || c === 'repeat') ctl(c);
+  else if (c === 'seek' && au.duration) au.currentTime = Math.max(0, Math.min(au.duration - 1, +v || 0));
+  else if (c === 'skip' && au.duration) au.currentTime = Math.max(0, au.currentTime + (+v || 10));
+  else if (c === 'stop') { au.pause(); au.removeAttribute('src'); au.load(); queue = []; qi = -1; mark(); window.lumenNP?.(null); return; }
+  setTimeout(npTick, 200);
+}
 au.onended = () => repeat ? (au.currentTime = 0, au.play()) : qi < queue.length - 1 ? load(qi + 1) : null;
 au.onerror = () => { if (queue.length > 1) setTimeout(() => load(qi + 1), 800); };
 if ('mediaSession' in navigator) for (const [a, c] of [['play', 'toggle'], ['pause', 'toggle'], ['nexttrack', 'next'], ['previoustrack', 'prev']]) navigator.mediaSession.setActionHandler(a, () => ctl(c));
@@ -140,9 +157,9 @@ addEventListener('keydown', e => {
   if (k === 'MediaPlayPause' || k === ' ') { e.preventDefault(); return ctl('toggle'); }
   if (k === 'MediaTrackNext') return ctl('next');
   if (k === 'MediaTrackPrevious') return ctl('prev');
-  if (!files.length) { if (back) location.href = '/'; return; }
+  if (!files.length) { if (back) lumenExit(); return; }
   const zone = a?.classList.contains('fo') ? 'f' : a?.classList.contains('tr') ? 't' : a?.classList.contains('cb') ? 'c' : '';
-  if (back) { e.preventDefault(); return zone === 'f' ? (location.href = '/') : $('.fo.on')?.focus(); }
+  if (back) { e.preventDefault(); return zone === 'f' ? (lumenExit()) : $('.fo.on')?.focus(); }
   if (!k.startsWith('Arrow')) return;
   e.preventDefault();
   if (!zone) return $('.fo')?.focus();
@@ -156,10 +173,12 @@ addEventListener('keydown', e => {
 
 let roots = [];
 (function sock() {
-  const ws = new WebSocket(`ws://${location.host}/ws?tv=1`);
+  const ws = window.lumenWS = new WebSocket(`ws://${location.host}/ws?tv=1`);
+  ws.onopen = () => window.lumenNPResend?.();
   ws.onmessage = e => { const m = JSON.parse(e.data);
+    if (m.t === 'cmd') cmd(m.c, m.v);
     if (m.t === 'vol') window.lumenVolume?.(m.v, m.muted);
-    if (m.t === 'open' && m.url) location.href = m.url;
+    if (m.t === 'open' && m.url) lumenExit(m.url);
     if (m.t === 'search') location.href = '/s/apps/youtube.html?q=' + encodeURIComponent(m.q); };
   ws.onclose = () => setTimeout(sock, 2000);
 })();
