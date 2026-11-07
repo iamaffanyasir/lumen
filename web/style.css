@@ -29,6 +29,8 @@ body.dim #home{transform:scale(.95) translateX(-4vw);filter:blur(5px) brightness
 .brand{font-weight:800;letter-spacing:.55em;font-size:1.5rem;background:linear-gradient(90deg,#fff 20%,var(--c2),#fff 80%);background-size:200%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 6s linear infinite}
 @keyframes shimmer{to{background-position:-200% 0}}
 .top .sp{flex:1}
+.brandlogo{height:clamp(28px,3.4vh,44px);filter:drop-shadow(0 0 18px rgba(155,107,255,.55));animation:logoGlow 5s ease-in-out infinite}
+@keyframes logoGlow{50%{filter:drop-shadow(0 0 28px rgba(155,107,255,.9))}}
 #clock{font-size:1.7rem;font-weight:300;font-variant-numeric:tabular-nums;text-align:right}
 #clock small{display:block;font-size:.8rem;color:var(--mute);letter-spacing:.1em}
 .hero{padding:6vh 5vw 2vh;height:29vh}
