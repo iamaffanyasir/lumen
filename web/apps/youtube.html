@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>YouTube · Lumen</title><link rel="stylesheet" href="/s/style.css">
+<style>
+body{overflow-y:auto;scrollbar-width:none}
+.wall{--w0:#0d0306;--w1:#ff1e3c;--w2:#5c0820;--w3:#ff7a59}
+.yt{padding:4.5vh 5vw 8vh}
+.bar{display:flex;gap:2vw;align-items:center;margin-bottom:4vh}
+.logo{font-weight:800;font-size:1.8rem;white-space:nowrap}.logo b{color:#ff2d55}.logo span{color:var(--mute);font-weight:400;font-size:1rem;margin-left:.4em}
+#q{flex:1;margin:0}
+h1{font-size:1rem;color:var(--mute);letter-spacing:.14em;text-transform:uppercase;margin-bottom:2vh}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:2.2vw}
+.card{text-align:left;border-radius:18px;overflow:hidden;background:rgba(255,255,255,.05);transition:transform .45s var(--ease),box-shadow .45s;animation:rise .7s var(--soft) both;animation-delay:calc(var(--i)*45ms)}
+.card img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
+.card div{padding:.8em 1em .3em;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card small{display:block;color:var(--mute);padding:0 1.15em 1em}
+.card:focus{transform:scale(1.07);box-shadow:0 0 0 3px #fff,0 24px 60px -12px #ff2d55;position:relative;z-index:2}
+#player{position:fixed;inset:0;background:#000;z-index:70;display:none;animation:pop .45s var(--soft)}
+#player iframe{width:100%;height:100%;border:0}
+.empty{max-width:640px;margin:10vh auto;text-align:center}.empty p{color:var(--mute);margin:1rem 0 2rem;line-height:1.6}
+</style></head>
+<body>
+<div class="wall"><i></i><i></i><i></i></div>
+<div class="yt">
+  <div class="bar"><div class="logo"><b>▶</b> YouTube<span>on Lumen</span></div><input id="q" class="txt" placeholder="Search YouTube"></div>
+  <h1 id="title">Trending</h1>
+  <div id="grid" class="grid"></div>
+</div>
+<div id="player"></div>
+<script>
+const $ = s => document.querySelector(s), G = $('#grid'), Q = $('#q'), P = $('#player');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let key = '', region = 'US', last = null;
+
+async function yt(path) {
+  const r = await fetch(`https://www.googleapis.com/youtube/v3/${path}&key=${encodeURIComponent(key)}`).then(r => r.json());
+  if (r.error) throw r.error.message; return r.items;
+}
+function show(items) {
+  G.innerHTML = items.map((v, i) => {
+    const id = v.id.videoId || v.id, s = v.snippet, th = s.thumbnails.high || s.thumbnails.medium || s.thumbnails.default;
+    return `<button class="card" style="--i:${i}" data-id="${esc(id)}"><img src="${esc(th.url)}" alt=""><div>${esc(s.title)}</div><small>${esc(s.channelTitle)}</small></button>`;
+  }).join('');
+  G.querySelector('.card')?.focus();
+}
+async function load(q) {
+  $('#title').textContent = q ? `Results for “${q}”` : 'Trending';
+  G.innerHTML = '<p class="hint">Loading…</p>';
+  try { show(await yt(q ? `search?part=snippet&type=video&maxResults=24&q=${encodeURIComponent(q)}` : `videos?part=snippet&chart=mostPopular&maxResults=24&regionCode=${region}`)); }
+  catch (e) { G.innerHTML = `<p class="hint">YouTube error: ${esc(e)}</p>`; }
+}
+function play(id) {
+  P.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&modestbranding=1&playsinline=1" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
+  P.style.display = 'block';
+}
+function stop() { P.innerHTML = ''; P.style.display = 'none'; last?.focus(); }
+
+G.addEventListener('click', e => { const c = e.target.closest('.card'); if (c) { last = c; play(c.dataset.id); } });
+Q.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); load(Q.value.trim()); } });
+
+addEventListener('keydown', e => {
+  const back = e.key === 'Escape' || e.key === 'BrowserBack' || (e.altKey && e.key === 'ArrowLeft');
+  if (P.style.display === 'block') { if (back) { e.preventDefault(); stop(); } return; }
+  if (back) { e.preventDefault(); location.href = '/'; return; }
+  const cards = [...G.querySelectorAll('.card,button')], a = document.activeElement, i = cards.indexOf(a);
+  const cols = Math.max(1, cards.filter(c => c.offsetTop === cards[0]?.offsetTop).length);
+  let n = null;
+  if (a === Q) { if (e.key === 'ArrowDown') n = 0; }
+  else if (i >= 0) {
+    if (e.key === 'ArrowUp' && i < cols) { e.preventDefault(); Q.focus(); return; }
+    n = { ArrowLeft: i - 1, ArrowRight: i + 1, ArrowUp: i - cols, ArrowDown: i + cols }[e.key];
+  } else if (e.key.startsWith('Arrow')) n = 0;
+  if (n != null && cards[n]) { e.preventDefault(); cards[n].focus({ preventScroll: true }); cards[n].scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+});
+
+(async () => {
+  const s = await fetch('/api/settings').then(r => r.json()).catch(() => ({}));
+  key = s.ytKey || ''; region = s.region || 'US';
+  if (key) return load('');
+  $('#title').textContent = '';
+  G.style.display = 'block';
+  G.innerHTML = `<div class="empty"><h2>Add a YouTube API key</h2>
+    <p>The Lumen YouTube skin needs a free YouTube Data API key. Add it in Settings → YouTube.<br>Until then you can use the classic YouTube site.</p>
+    <button class="opt on" onclick="location.href='https://www.youtube.com'">Open classic YouTube</button>
+    <button class="opt" onclick="location.href='/'">Back to home</button></div>`;
+  G.querySelector('button').focus();
+})();
+</script>
+</body></html>

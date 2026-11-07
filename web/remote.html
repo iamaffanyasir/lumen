@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#07081a"><meta name="apple-mobile-web-app-capable" content="yes">
+<title>Lumen Remote</title>
+<style>
+:root{--c1:#7c5cff;--c2:#00d4ff;--fg:#f4f6ff;--mute:#8d96bd;--card:rgba(255,255,255,.06);--ease:cubic-bezier(.2,.9,.25,1.15)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+html,body{height:100%;overflow:hidden;background:radial-gradient(120% 60% at 0 0,#2a1a6b 0,transparent 60%),radial-gradient(100% 60% at 100% 100%,#003a5c 0,transparent 60%),#05060f;color:var(--fg);font-family:Inter,system-ui,sans-serif;touch-action:manipulation}
+button{font:inherit;color:inherit;border:0;background:var(--card);border-radius:20px;transition:transform .15s var(--ease),background .2s}
+button.hit,button:active{transform:scale(.92);background:rgba(255,255,255,.16)}
+svg{width:26px;height:26px}
+header{display:flex;align-items:center;padding:calc(env(safe-area-inset-top) + 16px) 20px 8px}
+.brand{font-weight:800;letter-spacing:.45em;background:linear-gradient(90deg,#fff,var(--c2));-webkit-background-clip:text;color:transparent}
+.dot{margin-left:auto;width:10px;height:10px;border-radius:50%;background:#ff3b5c;box-shadow:0 0 12px currentColor;transition:.3s}
+.dot.on{background:#1ed760}
+main{position:absolute;inset:60px 0 84px;padding:12px 20px;overflow-y:auto}
+.view{display:none;flex-direction:column;gap:18px;height:100%;animation:in .35s ease}
+.view.on{display:flex}
+@keyframes in{from{opacity:0;transform:translateY(12px)}}
+.dpad{position:relative;width:min(78vw,320px);aspect-ratio:1;margin:8px auto;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.04) 0,rgba(255,255,255,.09) 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 20px 60px -20px var(--c1)}
+.dpad button{position:absolute;background:transparent;border-radius:50%;width:33%;height:33%;display:grid;place-items:center}
+.dpad .u{top:2%;left:33.5%}.dpad .d{bottom:2%;left:33.5%}.dpad .l{left:2%;top:33.5%}.dpad .r{right:2%;top:33.5%}
+.dpad .ok{inset:30%;width:auto;height:auto;background:linear-gradient(135deg,var(--c1),var(--c2));font-weight:800;font-size:1.1rem;box-shadow:0 10px 30px -6px var(--c1)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.grid button{height:64px;display:grid;place-items:center;font-size:.8rem;color:var(--mute)}
+.grid button svg{color:var(--fg)}
+#pad{flex:1;min-height:260px;border-radius:28px;background:var(--card);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);display:grid;place-items:center;color:var(--mute);text-align:center;font-size:.9rem;touch-action:none}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.row2 button{height:60px}
+#kb{width:100%;padding:18px;border-radius:20px;border:0;background:var(--card);color:#fff;font:inherit;font-size:1.1rem;outline:none;user-select:text;-webkit-user-select:text;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+#kb:focus{box-shadow:inset 0 0 0 2px var(--c1)}
+.hint{color:var(--mute);font-size:.85rem;text-align:center}
+h3{color:var(--mute);font-size:.75rem;letter-spacing:.14em;text-transform:uppercase}
+.wide{height:58px;width:100%;font-weight:600}
+.danger{background:rgba(255,59,92,.25)}
+label.wide{display:grid;place-items:center;border-radius:20px;background:linear-gradient(135deg,var(--c1),var(--c2))}
+nav{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 12px);display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:6px;border-radius:24px;background:rgba(20,22,44,.75);backdrop-filter:blur(20px)}
+nav button{background:transparent;height:52px;font-size:.75rem;color:var(--mute);display:grid;place-items:center;gap:2px}
+nav button.on{background:linear-gradient(135deg,var(--c1),var(--c2));color:#fff}
+nav svg{width:20px;height:20px}
+#toast{position:fixed;left:50%;bottom:110px;transform:translate(-50%,200px);background:rgba(20,22,44,.95);padding:12px 18px;border-radius:14px;transition:transform .4s var(--ease)}
+#toast.show{transform:translate(-50%,0)}
+</style></head>
+<body>
+<header><div class="brand">LUMEN</div><div class="dot" id="dot"></div></header>
+<main>
+  <section class="view on" id="v-remote">
+    <div class="dpad">
+      <button class="u" data-k="UP" data-rep><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 15 6-6 6 6"/></svg></button>
+      <button class="d" data-k="DOWN" data-rep><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg></button>
+      <button class="l" data-k="LEFT" data-rep><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 6-6 6 6 6"/></svg></button>
+      <button class="r" data-k="RIGHT" data-rep><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 6 6 6-6 6"/></svg></button>
+      <button class="ok" data-k="ENTER">OK</button>
+    </div>
+    <div class="grid">
+      <button data-k="BACK"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>Back</button>
+      <button data-k="HOME"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11 12 3l9 8v10h-6v-6H9v6H3z"/></svg>Home</button>
+      <button data-k="PLAYPAUSE"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>Play/Pause</button>
+      <button data-v="down" data-rep><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h4l5-4v14l-5-4H4zM17 12h4"/></svg>Vol −</button>
+      <button data-v="mute"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h4l5-4v14l-5-4H4zM17 9l4 6M21 9l-4 6"/></svg>Mute</button>
+      <button data-v="up" data-rep><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h4l5-4v14l-5-4H4zM17 12h4M19 10v4"/></svg>Vol +</button>
+    </div>
+  </section>
+
+  <section class="view" id="v-pad">
+    <div id="pad">Drag to move<br>Tap to click · Two-finger tap = right click<br>Two fingers to scroll</div>
+    <div class="row2"><button id="lc">Left click</button><button id="rc">Right click</button></div>
+  </section>
+
+  <section class="view" id="v-kb">
+    <input id="kb" placeholder="Type here, it appears on the TV" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <div class="grid">
+      <button data-k="BACKSPACE">⌫<br>Delete</button><button data-k="ENTER">↵<br>Enter</button><button data-k="TAB">⇥<br>Tab</button>
+      <button data-k="LEFT" data-rep>←</button><button data-k="UP" data-rep>↑</button><button data-k="RIGHT" data-rep>→</button>
+      <button data-k="ESC">Esc</button><button data-k="DOWN" data-rep>↓</button><button data-k="SPACE">Space</button>
+    </div>
+    <p class="hint">Select a search box on the TV first, then type.</p>
+  </section>
+
+  <section class="view" id="v-more">
+    <h3>Wallpaper</h3>
+    <label class="wide" for="file">Upload photo as wallpaper</label>
+    <input id="file" type="file" accept="image/*" hidden>
+    <h3>Screen</h3>
+    <button class="wide" data-k="F11">Toggle fullscreen</button>
+    <h3>Lumen</h3>
+    <button class="wide" id="upd">Update Lumen</button>
+    <h3>Power</h3>
+    <button class="wide" data-p="restart-ui">Restart Lumen</button>
+    <button class="wide" data-p="reboot">Reboot</button>
+    <button class="wide danger" data-p="off">Power off</button>
+  </section>
+</main>
+<nav>
+  <button class="on" data-view="remote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>Remote</button>
+  <button data-view="pad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="3"/></svg>Touchpad</button>
+  <button data-view="kb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>Keyboard</button>
+  <button data-view="more"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>More</button>
+</nav>
+<div id="toast"></div>
+<script>
+const $ = s => document.querySelector(s), $$ = s => document.querySelectorAll(s);
+let ws;
+function conn() {
+  ws = new WebSocket(`ws://${location.host}/ws`);
+  ws.onopen = () => $('#dot').classList.add('on');
+  ws.onclose = () => { $('#dot').classList.remove('on'); setTimeout(conn, 1000); };
+}
+conn();
+const send = m => ws && ws.readyState === 1 && ws.send(JSON.stringify(m));
+const buzz = () => navigator.vibrate && navigator.vibrate(8);
+const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2500); };
+
+// Buttons: tap sends once; arrows and volume repeat while held.
+$$('[data-k],[data-v]').forEach(b => {
+  let rep, delay;
+  const fire = () => b.dataset.k ? send({ t: 'key', k: b.dataset.k }) : send({ t: 'vol', d: b.dataset.v });
+  const stop = () => { clearTimeout(delay); clearInterval(rep); b.classList.remove('hit'); };
+  b.addEventListener('pointerdown', e => {
+    e.preventDefault(); buzz(); fire(); b.classList.add('hit');
+    if (b.hasAttribute('data-rep')) delay = setTimeout(() => rep = setInterval(fire, b.dataset.v ? 150 : 90), 400);
+  });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, stop));
+});
+
+// Tabs
+$$('nav button').forEach(b => b.onclick = () => {
+  $$('nav button').forEach(x => x.classList.toggle('on', x === b));
+  $$('.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + b.dataset.view));
+  if (b.dataset.view === 'kb') setTimeout(() => $('#kb').focus(), 50);
+});
+
+// Touchpad
+const pad = $('#pad'); let last = null, moved = 0, t0 = 0, maxTouch = 0, acc = { x: 0, y: 0, s: 0 }, queued = false;
+const avg = ts => { let x = 0, y = 0; for (const t of ts) { x += t.clientX; y += t.clientY; } return { x: x / ts.length, y: y / ts.length }; };
+function flush() {
+  queued = false;
+  const x = Math.trunc(acc.x), y = Math.trunc(acc.y), s = Math.trunc(acc.s / 22);
+  if (x || y) { send({ t: 'move', x, y }); acc.x -= x; acc.y -= y; }
+  if (s) { send({ t: 'scroll', y: s }); acc.s -= s * 22; }
+}
+pad.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (e.touches.length === 1) { t0 = Date.now(); moved = 0; maxTouch = 0; }
+  maxTouch = Math.max(maxTouch, e.touches.length); last = avg(e.touches);
+}, { passive: false });
+pad.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const p = avg(e.touches), dx = p.x - last.x, dy = p.y - last.y; last = p;
+  moved += Math.abs(dx) + Math.abs(dy);
+  if (e.touches.length >= 2) acc.s += dy;
+  else { const k = 1.6 + Math.min(Math.hypot(dx, dy), 30) / 10; acc.x += dx * k; acc.y += dy * k; }
+  if (!queued) { queued = true; requestAnimationFrame(flush); }
+}, { passive: false });
+pad.addEventListener('touchend', e => {
+  e.preventDefault();
+  if (e.touches.length) { last = avg(e.touches); return; }
+  if (Date.now() - t0 < 250 && moved < 10) { buzz(); send({ t: 'click', b: maxTouch >= 2 ? 'right' : 'left' }); }
+}, { passive: false });
+$('#lc').onclick = () => { buzz(); send({ t: 'click', b: 'left' }); };
+$('#rc').onclick = () => { buzz(); send({ t: 'click', b: 'right' }); };
+
+// Keyboard: compare old and new text so phone autocorrect and predictions still work.
+const kb = $('#kb'); let prev = '';
+kb.addEventListener('input', () => {
+  const v = kb.value; let i = 0;
+  while (i < prev.length && i < v.length && prev[i] === v[i]) i++;
+  for (let j = 0; j < prev.length - i; j++) send({ t: 'key', k: 'BACKSPACE' });
+  if (v.slice(i)) send({ t: 'text', s: v.slice(i) });
+  prev = v;
+});
+kb.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); send({ t: 'key', k: 'ENTER' }); kb.value = prev = ''; }
+  else if (e.key === 'Backspace' && !kb.value) send({ t: 'key', k: 'BACKSPACE' });
+});
+
+// More: wallpaper upload + power
+$('#file').onchange = async () => {
+  const f = $('#file').files[0]; if (!f) return;
+  toast('Uploading…');
+  const fd = new FormData(); fd.append('file', f);
+  const r = await fetch('/api/wallpaper', { method: 'POST', body: fd }).then(r => r.json());
+  await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wallpaper: 'img:' + r.name }) });
+  toast('Wallpaper set'); $('#file').value = '';
+};
+$('#upd').onclick = () => { fetch('/api/update', { method: 'POST' }); toast('Updating. Watch the TV for progress.'); };
+$$('[data-p]').forEach(b => b.onclick = () => {
+  const a = b.dataset.p, names = { off: 'Power off', reboot: 'Reboot', 'restart-ui': 'Restart Lumen' };
+  if (!confirm(names[a] + '?')) return;
+  fetch('/api/power', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: a }) });
+  toast(a === 'off' ? 'Shutting down…' : 'Restarting…');
+});
+</script>
+</body></html>

@@ -1,0 +1,9 @@
+[
+  {"name": "YouTube", "sub": "Lumen skin · trending & search", "url": "/s/apps/youtube.html", "a": "#ff2d55", "b": "#5c0820", "icon": "play"},
+  {"name": "YouTube Classic", "sub": "Full YouTube site with Brave ad blocking", "url": "https://www.youtube.com", "a": "#e52d27", "b": "#3d0a0a", "icon": "play"},
+  {"name": "Netflix", "sub": "Movies & series", "url": "https://www.netflix.com", "a": "#e50914", "b": "#1a0000", "icon": "N"},
+  {"name": "Prime Video", "sub": "Movies & series", "url": "https://www.primevideo.com", "a": "#00a8e1", "b": "#062a3d", "icon": "P"},
+  {"name": "Spotify", "sub": "Music & podcasts", "url": "https://open.spotify.com", "a": "#1ed760", "b": "#07351a", "icon": "♪"},
+  {"name": "Twitch", "sub": "Live streams", "url": "https://www.twitch.tv", "a": "#9146ff", "b": "#22104a", "icon": "T"},
+  {"name": "Browser", "sub": "Search the web with Brave", "url": "https://search.brave.com", "a": "#ff7a3d", "b": "#3d1a08", "icon": "globe"}
+]

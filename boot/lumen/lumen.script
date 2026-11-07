@@ -1,0 +1,29 @@
+# Lumen boot animation: glowing wordmark that fades in and pulses, with a wave of dots.
+Window.SetBackgroundTopColor(0.02, 0.02, 0.06);
+Window.SetBackgroundBottomColor(0.08, 0.03, 0.16);
+W = Window.GetWidth();
+H = Window.GetHeight();
+
+logo = Image.Text("L U M E N", 1, 1, 1, 1, "Sans Bold 64");
+glow = Image.Text("L U M E N", 0.48, 0.36, 1, 1, "Sans Bold 64");
+cx = W / 2 - logo.GetWidth() / 2;
+cy = H / 2 - logo.GetHeight() / 2;
+g = Sprite(glow); g.SetPosition(cx + 3, cy + 3, 1);
+s = Sprite(logo); s.SetPosition(cx, cy, 2);
+
+dot = Image.Text("●", 0.0, 0.83, 1, 1, "Sans 18");
+for (i = 0; i < 5; i++) {
+  d[i] = Sprite(dot);
+  d[i].SetPosition(W / 2 - 2.5 * 30 + i * 30, cy + logo.GetHeight() + 50, 3);
+  d[i].SetOpacity(0);
+}
+
+t = 0;
+fun refresh() {
+  t++;
+  fade = Math.Min(t / 60, 1);
+  s.SetOpacity(fade * (0.75 + 0.25 * Math.Sin(t / 25)));
+  g.SetOpacity(fade * (0.25 + 0.35 * Math.Sin(t / 25 + 1.5)));
+  for (i = 0; i < 5; i++) d[i].SetOpacity(fade * (0.15 + 0.85 * Math.Max(0, Math.Sin(t / 9 - i * 0.8))));
+}
+Plymouth.SetRefreshFunction(refresh);
