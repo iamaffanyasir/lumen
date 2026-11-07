@@ -12,14 +12,18 @@ SETTINGS = DATA / "settings.json"
 USER = os.environ.get("LUMEN_USER", "pi")
 PORT = int(os.environ.get("LUMEN_PORT", "80"))
 IMG = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
-DEFAULTS = {"wallpaper": "aurora", "screensaver": "aurora", "saverMinutes": 5, "ytKey": "", "region": "IN"}
+DEFAULTS = {"v": 2, "wallpaper": "none", "saverOn": True, "screensaver": "clock", "saverMinutes": 5, "clock12": True,
+            "city": "Delhi", "country": "India", "school": 1, "method": 1, "ytKey": "", "region": "IN"}
 
 
 def load_settings():
     try:
-        return {**DEFAULTS, **json.loads(SETTINGS.read_text())}
+        s = json.loads(SETTINGS.read_text())
     except Exception:
-        return dict(DEFAULTS)
+        s = {}
+    if s and s.get("v", 1) < 2:          # one-time move to the new defaults (no wallpaper)
+        s.update(v=2, wallpaper="none"); SETTINGS.write_text(json.dumps(s, indent=2))
+    return {**DEFAULTS, **s}
 
 
 # ---------- virtual keyboard + mouse (works system-wide via /dev/uinput) ----------
@@ -136,7 +140,8 @@ async def post_settings(req):
 
 async def info(req):
     host = socket.gethostname()
-    return web.json_response({"host": host, "ip": local_ip(), "url": f"http://{host}.local", "ipUrl": f"http://{local_ip()}"})
+    _, ver = await run("git", "-c", f"safe.directory={ROOT}", "-C", str(ROOT), "log", "-1", "--format=%h · %cd", "--date=format:%d %b %Y", code=True)
+    return web.json_response({"version": ver.strip() or "unknown", "host": host, "ip": local_ip(), "url": f"http://{host}.local", "ipUrl": f"http://{local_ip()}"})
 
 
 async def wallpapers(req):
@@ -265,6 +270,51 @@ async def wifi_forget(req):
     return web.json_response({"ok": True})
 
 
+# ---------- tech news (RSS + Hacker News), cached for 30 minutes ----------
+NEWS = {"t": 0, "items": []}
+FEEDS = [("The Verge", "https://www.theverge.com/rss/tech/index.xml"),
+         ("TechCrunch", "https://techcrunch.com/feed/"),
+         ("Ars Technica", "https://feeds.arstechnica.com/arstechnica/technology-lab")]
+
+
+def _ts(text):
+    from email.utils import parsedate_to_datetime
+    from datetime import datetime
+    try: return parsedate_to_datetime(text).timestamp()
+    except Exception: pass
+    try: return datetime.fromisoformat(text.replace("Z", "+00:00")).timestamp()
+    except Exception: return 0
+
+
+async def news(req):
+    import time, xml.etree.ElementTree as ET
+    from aiohttp import ClientSession, ClientTimeout
+    if NEWS["items"] and time.time() - NEWS["t"] < 1800:
+        return web.json_response(NEWS["items"])
+    items = []
+    async with ClientSession(timeout=ClientTimeout(total=15), headers={"User-Agent": "Lumen/1.0"}) as http:
+        for src, url in FEEDS:
+            try:
+                root = ET.fromstring(await (await http.get(url)).read())
+                for it in root.iter():
+                    if it.tag.split("}")[-1] not in ("item", "entry"): continue
+                    f = {c.tag.split("}")[-1]: (c.text or "").strip() for c in it}
+                    if f.get("title"):
+                        items.append({"title": f["title"], "source": src, "ts": _ts(f.get("pubDate") or f.get("published") or f.get("updated", ""))})
+            except Exception as ex:
+                print("news:", src, ex)
+        try:
+            j = await (await http.get("https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=12")).json()
+            items += [{"title": h["title"], "source": "Hacker News", "ts": h.get("created_at_i", 0), "trend": True} for h in j.get("hits", [])]
+        except Exception as ex:
+            print("news: hn", ex)
+    seen, out = set(), []
+    for i in sorted(items, key=lambda i: -i["ts"]):
+        if i["title"].lower() not in seen: seen.add(i["title"].lower()); out.append(i)
+    if out: NEWS.update(t=time.time(), items=out[:30])
+    return web.json_response(NEWS["items"])
+
+
 @web.middleware
 async def no_cache(req, handler):
     resp = await handler(req)
@@ -305,7 +355,7 @@ async def main_app():
     r.add_get("/remote", await page("remote.html"))
     r.add_get("/ws", ws_handler)
     r.add_get("/api/settings", get_settings); r.add_post("/api/settings", post_settings)
-    r.add_get("/api/info", info)
+    r.add_get("/api/info", info); r.add_get("/api/news", news)
     r.add_get("/api/wallpapers", wallpapers); r.add_post("/api/wallpaper", upload)
     r.add_get("/api/bt", bt_list); r.add_post("/api/bt/scan", bt_scan); r.add_post("/api/bt/action", bt_action)
     r.add_post("/api/power", power)

@@ -90,5 +90,8 @@ for w in quiet splash plymouth.ignore-serial-consoles logo.nologo vt.global_curs
 done
 plymouth-set-default-theme -R lumen || echo "Could not rebuild the boot image; boot animation may not show."
 
+say "Boot straight into Lumen (hide desktop and taskbar)"
+bash "$DIR/post-update.sh"
+
 say "Done! Rebooting in 5 seconds (Ctrl+C to cancel)"
 sleep 5 && reboot

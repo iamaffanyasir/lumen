@@ -1,5 +1,6 @@
 #!/bin/bash
 # Starts the Lumen launcher full-screen in Brave and restarts it if it closes.
+exec 9>/tmp/lumen-kiosk.lock; flock -n 9 || exit 0   # only one copy at a time
 BROWSER=$(command -v brave-browser || command -v chromium-browser || command -v chromium)
 for i in $(seq 1 40); do curl -s -o /dev/null http://localhost/ && break; sleep 1; done
 while true; do
