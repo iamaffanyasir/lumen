@@ -2,23 +2,31 @@
 <html lang="en"><head><meta charset="utf-8"><title>Lumen</title><link rel="icon" href="/s/logo.png"><link rel="stylesheet" href="/s/style.css"></head>
 <body>
 <div id="wall" class="wall" data-w="none"></div>
-<main id="home">
-  <header class="top">
-    <div class="left"><img class="brandlogo" src="/s/logo.png" alt="Lumen"><div id="clock"></div></div>
-    <div class="nav" id="topbtns" data-nav>
-      <button class="ib" id="wifiBtn" aria-label="Wi-Fi"></button>
-      <button class="ib" id="setBtn" aria-label="Settings"></button>
-    </div>
-  </header>
-  <div class="row"><div class="track" id="apps" data-nav></div></div>
-  <section class="widgets" id="widgets"></section>
-  <section class="newsrow" id="news"></section>
-</main>
+<main id="home"><div id="pages">
+  <section class="page p1">
+    <header class="top">
+      <div class="left"><img class="brandlogo" src="/s/logo.png" alt="Lumen"><div id="clock"></div></div>
+      <div class="nav" id="topbtns" data-nav>
+        <button class="ib" id="wifiBtn" aria-label="Wi-Fi"></button>
+        <button class="ib" id="setBtn" aria-label="Settings"></button>
+      </div>
+    </header>
+    <div class="hero"><div id="heroTitle"></div><div id="heroSub"></div></div>
+    <div class="row"><div class="track" id="apps" data-nav></div></div>
+    <section class="widgets" id="widgets"></section>
+    <div class="more" id="moreHint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>Tech news</div>
+  </section>
+  <section class="page p2" id="newsPage">
+    <div class="nhead"><h2>Tech news</h2><span>Latest from The Verge, TechCrunch, Ars Technica &amp; Hacker News</span></div>
+    <div class="ngrid" id="news"></div>
+  </section>
+</div></main>
 <aside id="settings" class="panel"></aside>
 <div id="sheet" class="sheetwrap hidden"><div class="sheet"><div class="shead"><button class="opt back" data-do="sheetback:"></button><h2 id="sheetTitle"></h2></div><div id="sheetBody"></div></div></div>
 <div id="modal" class="modal hidden"><div class="box"><h2 id="mTitle"></h2><p id="mText"></p><div id="mExtra"></div><div id="mBtns"></div></div></div>
 <div id="saver" class="saver hidden"></div>
 <div id="launch" class="launch"></div>
 <div id="toast"></div>
+<script src="/s/osd.js"></script>
 <script src="/s/app.js"></script>
 </body></html>

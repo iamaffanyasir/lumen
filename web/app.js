@@ -46,11 +46,17 @@ let sheetSec = null, sheetFrom = 'panel', busy = {};
 function tile(o, i) {
   const b = document.createElement('button');
   b.className = 'tile'; b.style.cssText = `--a:${o.a};--i:${i}`;
-  b.innerHTML = `<span class="lg" style="--m:url(/s/icons/${o.logo}.svg)"></span><span class="nm">${esc(o.name)}</span>`;
-  b.onfocus = () => slideRow(b);
+  b.innerHTML = `<span class="lg" style="--m:url(/s/icons/${o.logo}.svg)"></span>`;
+  b.onfocus = () => hero(o, b);
   b.onmouseenter = () => layer === 'home' && b.focus({ preventScroll: true });
   b.onclick = () => launch(o, b);
   return b;
+}
+function hero(o, b) {
+  for (const [id, txt] of [['#heroTitle', o.name], ['#heroSub', o.sub || '']]) {
+    const el = $(id); el.textContent = txt; el.classList.remove('swap'); void el.offsetWidth; el.classList.add('swap');
+  }
+  slideRow(b);
 }
 function slideRow(b) {   // GPU transform keeps the focused tile on screen
   const track = b.parentElement, view = track.parentElement.clientWidth, pad = view * 0.045;
@@ -72,7 +78,7 @@ function homeMove(d) {
   if (r < 0) return $('#apps .tile')?.focus();
   let items = [...rows[r].children], c = items.indexOf(cur);
   if (d === 'l') c--; else if (d === 'r') c++;
-  else { r += d === 'u' ? -1 : 1; if (r < 0 || r >= rows.length) return; items = [...rows[r].children]; c = d === 'u' ? items.length - 1 : 0; }
+  else { r += d === 'u' ? -1 : 1; if (r >= rows.length) return goNews(); if (r < 0) return; items = [...rows[r].children]; c = d === 'u' ? items.length - 1 : 0; }
   items[c]?.focus({ preventScroll: true });
 }
 
@@ -87,6 +93,7 @@ addEventListener('keydown', e => {
   if (!d || (typing() && (d === 'l' || d === 'r'))) return;
   e.preventDefault();
   if (layer === 'home') homeMove(d);
+  else if (layer === 'news') { const a = document.activeElement; spatial($('#news'), d); if (d === 'u' && a === document.activeElement) goHome(); }
   else spatial(layer === 'panel' ? $('#settings') : layer === 'sheet' ? $('.sheet') : $('#modal .box'), d);
 });
 for (const ev of ['mousemove', 'pointerdown', 'wheel']) addEventListener(ev, () => { idle = Date.now(); if (!$('#saver').classList.contains('hidden')) hideSaver(); });
@@ -106,7 +113,21 @@ function spatial(box, d) {
   }
   if (best) { best.focus({ preventScroll: true }); best.scrollIntoView({ block: 'nearest' }); }
 }
+/* tech news screen: press down from the apps, up (or Back) to return */
+function goNews() {
+  if (!$('#news .nc,#news .tr')) return;
+  lastHome = document.activeElement; layer = 'news'; $('#pages').classList.add('down');
+  $('#news .nc,#news .tr').focus({ preventScroll: true });
+}
+function goHome() {
+  layer = 'home'; $('#pages').classList.remove('down');
+  (lastHome || $('#apps .tile'))?.focus({ preventScroll: true });
+}
+$('#news').addEventListener('click', e => { const c = e.target.closest('[data-link]'); if (c) location.href = c.dataset.link; });
+$('#moreHint').addEventListener('click', goNews);
+
 function goBack() {
+  if (layer === 'news') return goHome();
   if (layer === 'modal') closeModal(); else if (layer === 'sheet') closeSheet(); else if (layer === 'panel') closePanel();
 }
 
@@ -337,7 +358,7 @@ function showSaver() {
 }
 function hideSaver() { $('#saver').classList.add('hidden'); clearInterval(photoTimer); }
 setInterval(() => {
-  if (S.saverOn && layer === 'home' && $('#saver').classList.contains('hidden') && Date.now() - idle > (S.saverMinutes || 5) * 60000) showSaver();
+  if (S.saverOn && (layer === 'home' || layer === 'news') && $('#saver').classList.contains('hidden') && Date.now() - idle > (S.saverMinutes || 5) * 60000) showSaver();
 }, 5000);
 
 /* ================= widgets ================= */
@@ -346,13 +367,15 @@ const WX = c => c === 0 || c === 1 ? ['Clear', 'sun'] : c === 2 ? ['Partly cloud
 const today = () => new Date().toISOString().slice(0, 10);
 const getJSON = u => fetch(u).then(r => { if (!r.ok) throw r.status; return r.json(); });
 const wOn = w => S.widgets?.[w] !== false;
-let prayerData = null, newsItems = [], newsPage = 0;
+let prayerData = null, newsItems = [];
 
+const COLS = { weather: '1fr', prayer: '1.9fr', moon: '1fr', hadith: '1.9fr' };
 function renderWidgets(force) {
   const small = ['weather', 'prayer', 'moon', 'hadith'].filter(wOn), box = $('#widgets');
-  box.style.gridTemplateColumns = `repeat(${Math.max(small.length, 1)},1fr)`;
+  box.style.setProperty('--cols', small.map(w => COLS[w]).join(' ') || '1fr');
   box.innerHTML = small.map(w => `<div class="wg" id="w-${w}"><h4>${WIDGETS.find(x => x[0] === w)[1]}</h4><div class="wload">Loading…</div></div>`).join('');
-  $('#news').innerHTML = wOn('news') ? '<div class="wg" id="w-news"><h4><span>Tech news & trends</span><span id="npage"></span></h4><div class="wload">Loading…</div></div>' : '';
+  $('#moreHint').style.display = wOn('news') ? '' : 'none';
+  if (!wOn('news')) $('#news').innerHTML = '';
   if (wOn('weather')) loadWeather(force);
   if (wOn('prayer') || wOn('moon')) loadPrayer(force);
   if (wOn('moon')) drawMoon();
@@ -371,9 +394,8 @@ async function loadWeather(force) {
     }
     const w = await getJSON(`https://api.open-meteo.com/v1/forecast?latitude=${geo.lat}&longitude=${geo.lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1`);
     const c = w.current, [label, ic] = WX(c.weather_code), icon = ic === 'sun' && !c.is_day ? 'moon' : ic;
-    fill('weather', `<div class="wx">${I[icon]}<div class="temp">${Math.round(c.temperature_2m)}°</div></div>
-      <div class="wbig">${label}</div><div class="wsub">${esc(geo.name)}<br>Feels ${Math.round(c.apparent_temperature)}° · Humidity ${c.relative_humidity_2m}%<br>
-      H ${Math.round(w.daily.temperature_2m_max[0])}° · L ${Math.round(w.daily.temperature_2m_min[0])}°</div>`);
+    fill('weather', `<div class="wl wx">${I[icon]}<div class="temp">${Math.round(c.temperature_2m)}°</div></div>
+      <div class="ws">${label} · ${esc(geo.name)}<br>H ${Math.round(w.daily.temperature_2m_max[0])}° L ${Math.round(w.daily.temperature_2m_min[0])}°</div>`);
   } catch (e) { fill('weather', `<div class="wload">Weather unavailable (${esc(e)})</div>`); }
 }
 
@@ -390,13 +412,13 @@ async function loadPrayer(force) {
 }
 function drawPrayer() {
   if (!prayerData || !wOn('prayer')) return;
-  const names = ['Fajr', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'], now = new Date();
+  const names = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'], now = new Date();
   const at = n => { const [h, m] = prayerData.t[n].split(':').map(Number); const d = new Date(); d.setHours(h, m, 0, 0); return d; };
-  let next = names.filter(n => n !== 'Sunrise').find(n => at(n) > now) || 'Fajr';
+  let next = names.find(n => at(n) > now) || 'Fajr';
   let target = at(next); if (target < now) target.setDate(target.getDate() + 1);
   const mins = Math.round((target - now) / 60000), left = mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`;
-  fill('prayer', names.map(n => `<div class="pr${n === next ? ' next' : at(n) < now ? ' past' : ''}"><span>${n}</span><span>${fmtHM(prayerData.t[n])}</span></div>`).join('') +
-    `<div class="cd">${next} in ${left} · ${esc(S.city)} · ${S.school == 1 ? 'Hanafi' : 'Standard'}</div>`);
+  fill('prayer', `<div class="prs">${names.map(n => `<div class="pr${n === next ? ' next' : at(n) < now ? ' past' : ''}"><span>${n}</span><b>${fmtHM(prayerData.t[n])}</b></div>`).join('')}</div>
+    <div class="ws" style="margin-top:.9rem">${next} in ${left} · ${S.school == 1 ? 'Hanafi' : 'Standard'}</div>`);
 }
 function drawMoon() {
   if (!wOn('moon')) return;
@@ -406,10 +428,9 @@ function drawMoon() {
   const illum = Math.round((1 - k) / 2 * 100), age = Math.round(f * syn);
   const name = f < .03 || f > .97 ? 'New moon' : f < .22 ? 'Waxing crescent' : f < .28 ? 'First quarter' : f < .47 ? 'Waxing gibbous'
     : f < .53 ? 'Full moon' : f < .72 ? 'Waning gibbous' : f < .78 ? 'Last quarter' : 'Waning crescent';
-  fill('moon', `<div class="moon"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#23263a"/>
-    <path d="M50 10A40 40 0 0 ${outer} 50 90A${rx} 40 0 0 ${inner} 50 10Z" fill="#f1ead2"/></svg>
-    <div><div class="wbig" style="margin:0">${name}</div><div class="wsub" style="margin-top:.4rem">${illum}% lit · day ${age}</div></div></div>
-    <div class="wsub">${prayerData ? esc(prayerData.hijri) : ''}</div>`);
+  fill('moon', `<div class="wl"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#23263a"/>
+    <path d="M50 10A40 40 0 0 ${outer} 50 90A${rx} 40 0 0 ${inner} 50 10Z" fill="#f1ead2"/></svg><div class="wt">${name}</div></div>
+    <div class="ws">${illum}% lit${prayerData ? ' · ' + esc(prayerData.hijri) : ''}</div>`);
 }
 async function loadHadith() {
   try {
@@ -425,22 +446,22 @@ async function loadHadith() {
       if (!h || h.day !== today()) throw 'none';
       store.set('hadith', h);
     }
-    fill('hadith', `<div class="hd">${esc(h.text)}</div><div class="ref">Sahih al-Bukhari ${h.n}</div>`);
+    fill('hadith', `<div class="hd">${esc(h.text)}</div><div class="ws">Sahih al-Bukhari ${h.n}</div>`);
   } catch { fill('hadith', '<div class="wload">Hadith unavailable</div>'); }
 }
 async function loadNews() {
-  try { newsItems = await api('news'); newsPage = 0; drawNews(); }
-  catch { fill('news', '<div class="wload">News unavailable</div>'); }
+  try { newsItems = await api('news'); drawNews(); }
+  catch { $('#news').innerHTML = '<p class="wload">News unavailable</p>'; }
 }
 function drawNews() {
-  if (!wOn('news') || !newsItems.length) return;
-  const pages = Math.ceil(newsItems.length / 3), p = newsPage % pages, ago = ts => { const m = Math.max(1, Math.round((Date.now() / 1000 - ts) / 60));
-    return m < 60 ? m + 'm ago' : m < 1440 ? Math.round(m / 60) + 'h ago' : Math.round(m / 1440) + 'd ago'; };
-  fill('news', `<div class="news">${newsItems.slice(p * 3, p * 3 + 3).map((n, i) => `<div class="ni" style="animation-delay:${i * 80}ms"><b>${esc(n.title)}</b>
-    <small>${n.trend ? '<span class="tr">Trending · </span>' : ''}${esc(n.source)}${n.ts ? ' · ' + ago(n.ts) : ''}</small></div>`).join('')}</div>`);
-  $('#w-news h4').innerHTML = `<span>Tech news & trends</span><span>${p + 1} / ${pages}</span>`;
+  if (!wOn('news') || !newsItems.length || layer === 'news') return;
+  const ago = ts => { const m = Math.max(1, Math.round((Date.now() / 1000 - ts) / 60)); return m < 60 ? m + 'm ago' : m < 1440 ? Math.round(m / 60) + 'h ago' : Math.round(m / 1440) + 'd ago'; };
+  const meta = n => `${esc(n.source)}${n.ts ? ' · ' + ago(n.ts) : ''}`;
+  const pics = newsItems.filter(n => !n.trend && n.img).slice(0, 5), trend = newsItems.filter(n => n.trend).slice(0, 6);
+  $('#news').innerHTML = pics.map((n, i) => `<button class="nc${i ? '' : ' big'}" data-link="${esc(n.link)}" style="background-image:url('${esc(n.img)}');animation-delay:${i * 60}ms">
+      <div class="nt"><b>${esc(n.title)}</b><small>${meta(n)}</small></div></button>`).join('') +
+    `<div class="trend"><h4>Trending on Hacker News</h4>${trend.map(n => `<button class="tr" data-link="${esc(n.link)}"><b>${esc(n.title)}</b><small>${meta(n)}</small></button>`).join('')}</div>`;
 }
-setInterval(() => { newsPage++; drawNews(); }, 12000);          // rotate headlines
 setInterval(() => { drawPrayer(); drawMoon(); }, 30000);        // countdown
 setInterval(() => { if (wOn('weather')) loadWeather(); if (wOn('news')) loadNews(); if (wOn('hadith')) loadHadith(); if (wOn('prayer')) loadPrayer(); }, 30 * 60000);
 
@@ -469,7 +490,11 @@ setInterval(async () => { wifi = await api('wifi').catch(() => wifi); wifiIcon()
 
 (function tvSocket() {   // searches from the phone open YouTube
   const ws = new WebSocket(`ws://${location.host}/ws?tv=1`);
-  ws.onmessage = e => { const m = JSON.parse(e.data); if (m.t === 'search' && m.q) location.href = '/s/apps/youtube.html?q=' + encodeURIComponent(m.q); };
+  ws.onmessage = e => {
+    const m = JSON.parse(e.data);
+    if (m.t === 'search' && m.q) location.href = '/s/apps/youtube.html?q=' + encodeURIComponent(m.q);
+    if (m.t === 'vol') window.lumenVolume?.(m.v, m.muted);
+  };
   ws.onclose = () => setTimeout(tvSocket, 2000);
 })();
 
@@ -480,5 +505,6 @@ setInterval(async () => { wifi = await api('wifi').catch(() => wifi); wifiIcon()
   tick(); setInterval(tick, 1000);
   renderWidgets();
   setTimeout(() => $('#apps .tile').focus({ preventScroll: true }), 100);
+  if (location.search === '?shot=news') setTimeout(goNews, 1500);   // used for screenshots
   wifi = await api('wifi').catch(() => []); wifiIcon();
 })();

@@ -76,6 +76,22 @@ def volume(d):
         as_user("wpctl", "set-volume", "-l", "1.0", "@DEFAULT_AUDIO_SINK@", "5%+" if d == "up" else "5%-")
 
 
+WOB = "/tmp/lumen-wob"
+
+
+def get_volume():
+    out = as_user("wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@")   # e.g. "Volume: 0.45 [MUTED]"
+    m = re.search(r"([\d.]+)", out or "")
+    return (round(float(m.group(1)) * 100) if m else 0), "MUTED" in (out or "")
+
+
+def wob(level):
+    try:
+        fd = os.open(WOB, os.O_WRONLY | os.O_NONBLOCK); os.write(fd, (str(level) + "\n").encode()); os.close(fd)
+    except OSError:
+        pass
+
+
 def handle(m):
     t = m.get("t")
     if t == "move" and MOUSE:
@@ -286,32 +302,59 @@ def _ts(text):
     except Exception: return 0
 
 
+IMG_RE = re.compile(r'<img[^>]+src="([^"]+)"')
+OG_RE = re.compile(r'<meta[^>]+property="og:image"[^>]+content="([^"]+)"|<meta[^>]+content="([^"]+)"[^>]+property="og:image"')
+
+
+async def og_image(http, url):
+    try:
+        async with http.get(url) as r:
+            m = OG_RE.search((await r.content.read(200_000)).decode(errors="ignore"))
+            return (m.group(1) or m.group(2)) if m else ""
+    except Exception:
+        return ""
+
+
 async def news(req):
-    import time, xml.etree.ElementTree as ET
+    import time, html, xml.etree.ElementTree as ET
     from aiohttp import ClientSession, ClientTimeout
     if NEWS["items"] and time.time() - NEWS["t"] < 1800:
         return web.json_response(NEWS["items"])
     items = []
-    async with ClientSession(timeout=ClientTimeout(total=15), headers={"User-Agent": "Lumen/1.0"}) as http:
+    async with ClientSession(timeout=ClientTimeout(total=15), headers={"User-Agent": "Mozilla/5.0 Lumen/1.0"}) as http:
         for src, url in FEEDS:
             try:
                 root = ET.fromstring(await (await http.get(url)).read())
                 for it in root.iter():
                     if it.tag.split("}")[-1] not in ("item", "entry"): continue
-                    f = {c.tag.split("}")[-1]: (c.text or "").strip() for c in it}
+                    f, img, link = {}, "", ""
+                    for c in it:
+                        name = c.tag.split("}")[-1]
+                        f[name] = (c.text or "").strip()
+                        if name in ("content", "thumbnail") and c.get("url") and not img: img = c.get("url")
+                        if name == "link": link = c.get("href") or f[name] or link
+                    if not img:
+                        m = IMG_RE.search(f.get("content", "") + f.get("description", "") + f.get("encoded", ""))
+                        img = m.group(1) if m else ""
                     if f.get("title"):
-                        items.append({"title": f["title"], "source": src, "ts": _ts(f.get("pubDate") or f.get("published") or f.get("updated", ""))})
+                        items.append({"title": html.unescape(f["title"]), "source": src, "link": link, "img": html.unescape(img),
+                                      "ts": _ts(f.get("pubDate") or f.get("published") or f.get("updated", ""))})
             except Exception as ex:
                 print("news:", src, ex)
         try:
             j = await (await http.get("https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=12")).json()
-            items += [{"title": h["title"], "source": "Hacker News", "ts": h.get("created_at_i", 0), "trend": True} for h in j.get("hits", [])]
+            items += [{"title": h["title"], "source": "Hacker News", "ts": h.get("created_at_i", 0), "trend": True, "img": "",
+                       "link": h.get("url") or f"https://news.ycombinator.com/item?id={h['objectID']}"} for h in j.get("hits", [])]
         except Exception as ex:
             print("news: hn", ex)
-    seen, out = set(), []
-    for i in sorted(items, key=lambda i: -i["ts"]):
-        if i["title"].lower() not in seen: seen.add(i["title"].lower()); out.append(i)
-    if out: NEWS.update(t=time.time(), items=out[:30])
+        seen, out = set(), []
+        for i in sorted(items, key=lambda i: -i["ts"]):
+            if i["title"].lower() not in seen: seen.add(i["title"].lower()); out.append(i)
+        out = out[:40]
+        missing = [i for i in out if not i.get("trend") and not i["img"] and i["link"]][:12]
+        for i, img in zip(missing, await asyncio.gather(*[og_image(http, i["link"]) for i in missing])):
+            i["img"] = html.unescape(img)
+    if out: NEWS.update(t=time.time(), items=out)
     return web.json_response(NEWS["items"])
 
 
@@ -338,7 +381,13 @@ async def ws_handler(req):
                     for tv in list(TV_SOCKETS):
                         await tv.send_json({"t": "search", "q": q})
                     await ws.send_json({"t": "note", "msg": "Searching on TV…" if TV_SOCKETS else "Go to the Lumen home screen on the TV first."})
-                elif m.get("t") == "vol": await asyncio.to_thread(handle, m)
+                elif m.get("t") == "vol":
+                    await asyncio.to_thread(handle, m)
+                    level, muted = await asyncio.to_thread(get_volume)
+                    if TV_SOCKETS:
+                        for tv in list(TV_SOCKETS): await tv.send_json({"t": "vol", "v": level, "muted": muted})
+                    else:
+                        wob(0 if muted else level)
                 else: handle(m)
             except Exception as ex:
                 print("remote:", ex)
