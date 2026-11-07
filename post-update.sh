@@ -8,6 +8,8 @@ H=$(getent passwd "$U" | cut -d: -f6)
 # show the Lumen logo on a dark screen instead of the Pi desktop.
 command -v swaybg >/dev/null || timeout 300 apt-get install -y swaybg
 command -v wob >/dev/null || timeout 300 apt-get install -y wob   # volume bar over other apps
+command -v ffmpeg >/dev/null || timeout 600 apt-get install -y ffmpeg   # thumbnails for the Videos app
+for d in Music Videos; do install -d -o "$U" -g "$U" "$H/$d"; done   # where the Music and Videos apps look
 install -d -o "$U" -g "$U" "$H/.config/labwc"
 cat > "$H/.config/labwc/autostart" <<EOF
 swaybg -c '#07080f' -i $DIR/web/splash.png -m center >/dev/null 2>&1 &

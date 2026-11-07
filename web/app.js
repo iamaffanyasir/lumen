@@ -494,6 +494,7 @@ setInterval(async () => { wifi = await api('wifi').catch(() => wifi); wifiIcon()
     const m = JSON.parse(e.data);
     if (m.t === 'search' && m.q) location.href = '/s/apps/youtube.html?q=' + encodeURIComponent(m.q);
     if (m.t === 'vol') window.lumenVolume?.(m.v, m.muted);
+    if (m.t === 'open' && m.url) location.href = m.url;   // app or sign-in page picked on the phone
   };
   ws.onclose = () => setTimeout(tvSocket, 2000);
 })();

@@ -1,8 +1,12 @@
 [
-  {"name": "YouTube", "sub": "Videos, music & live", "url": "/s/apps/youtube.html", "a": "#e62117", "logo": "youtube"},
-  {"name": "Netflix", "sub": "Movies & series", "url": "https://www.netflix.com", "a": "#b20710", "logo": "netflix"},
-  {"name": "Prime Video", "sub": "Movies & series", "url": "https://www.primevideo.com", "a": "#0f79af", "logo": "primevideo"},
-  {"name": "Spotify", "sub": "Music & podcasts", "url": "https://open.spotify.com", "a": "#1db954", "logo": "spotify"},
-  {"name": "Twitch", "sub": "Live streams", "url": "https://www.twitch.tv", "a": "#9146ff", "logo": "twitch"},
+  {"name": "YouTube", "sub": "Videos, music & live", "url": "/s/apps/youtube.html", "a": "#e62117", "logo": "youtube", "codeLogin": true,
+   "login": "https://accounts.google.com/ServiceLogin?service=youtube&continue=https%3A%2F%2Fwww.youtube.com%2F"},
+  {"name": "Music", "sub": "Songs on this TV", "url": "/s/apps/music.html", "a": "#ff2d75", "logo": "music"},
+  {"name": "Videos", "sub": "Movies & clips on this TV", "url": "/s/apps/videos.html", "a": "#ff9f0a", "logo": "video"},
+  {"name": "Netflix", "sub": "Movies & series", "url": "https://www.netflix.com", "a": "#b20710", "logo": "netflix", "login": "https://www.netflix.com/login"},
+  {"name": "Prime Video", "sub": "Movies & series", "url": "https://www.primevideo.com", "a": "#0f79af", "logo": "primevideo", "login": "https://www.primevideo.com/"},
+  {"name": "Spotify", "sub": "Music & podcasts", "url": "https://open.spotify.com", "a": "#1db954", "logo": "spotify",
+   "login": "https://accounts.spotify.com/login?continue=https%3A%2F%2Fopen.spotify.com%2F"},
+  {"name": "Twitch", "sub": "Live streams", "url": "https://www.twitch.tv", "a": "#9146ff", "logo": "twitch", "login": "https://www.twitch.tv/login"},
   {"name": "Brave Search", "sub": "Browse the web", "url": "https://search.brave.com", "a": "#fb542b", "logo": "brave"}
 ]

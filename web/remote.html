@@ -1,131 +1,256 @@
 <!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="theme-color" content="#07081a"><meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#07081a"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <title>Lumen Remote</title><link rel="icon" href="/s/logo.png"><link rel="apple-touch-icon" href="/s/logo.png">
 <style>
-:root{--c1:#7c5cff;--c2:#00d4ff;--fg:#f4f6ff;--mute:#8d96bd;--card:rgba(255,255,255,.06);--ease:cubic-bezier(.2,.9,.25,1.15)}
+:root{--c1:#7c5cff;--c2:#00d4ff;--fg:#f4f6ff;--mute:#8d96bd;--card:rgba(255,255,255,.06);--line:rgba(255,255,255,.09);--ease:cubic-bezier(.2,.9,.25,1.15);--r:18px}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
-html,body{height:100%;overflow:hidden;background:radial-gradient(120% 60% at 0 0,#2a1a6b 0,transparent 60%),radial-gradient(100% 60% at 100% 100%,#003a5c 0,transparent 60%),#05060f;color:var(--fg);font-family:Inter,system-ui,sans-serif;touch-action:manipulation}
-button{font:inherit;color:inherit;border:0;background:var(--card);border-radius:20px;transition:transform .15s var(--ease),background .2s}
-button.hit,button:active{transform:scale(.92);background:rgba(255,255,255,.16)}
-svg{width:26px;height:26px}
-header{display:flex;align-items:center;padding:calc(env(safe-area-inset-top) + 16px) 20px 8px}
-.brand{font-weight:800;letter-spacing:.45em;background:linear-gradient(90deg,#fff,var(--c2));-webkit-background-clip:text;color:transparent}
-.dot{margin-left:auto;width:10px;height:10px;border-radius:50%;background:#ff3b5c;box-shadow:0 0 12px currentColor;transition:.3s}
-.dot.on{background:#1ed760}
-main{position:absolute;inset:60px 0 84px;padding:12px 20px;overflow-y:auto}
-.view{display:none;flex-direction:column;gap:18px;height:100%;animation:in .35s ease}
+html,body{height:100%;overflow:hidden}
+body{display:flex;flex-direction:column;height:100vh;height:100dvh;background:radial-gradient(120% 60% at 0 0,#2a1a6b 0,transparent 60%),radial-gradient(100% 60% at 100% 100%,#003a5c 0,transparent 60%),#05060f;color:var(--fg);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;touch-action:manipulation}
+button,a.btn{font:inherit;color:inherit;border:0;background:var(--card);border-radius:var(--r);transition:transform .15s var(--ease),background .2s;text-decoration:none;cursor:pointer}
+button.hit,button:active,a.btn:active{transform:scale(.94);background:rgba(255,255,255,.16)}
+svg{width:24px;height:24px;flex:0 0 auto}
+input{font:inherit;user-select:text;-webkit-user-select:text}
+
+header{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top) + 14px) 20px 10px}
+header img{height:26px;filter:drop-shadow(0 0 12px rgba(155,107,255,.6))}
+.conn{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:.78rem;color:var(--mute);padding:6px 11px;border-radius:99px;background:var(--card)}
+.conn i{width:8px;height:8px;border-radius:50%;background:#ff3b5c;box-shadow:0 0 10px #ff3b5c}
+.conn.on i{background:#1ed760;box-shadow:0 0 10px #1ed760}
+
+main{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.view{display:none;flex-direction:column;gap:16px;min-height:100%;width:100%;max-width:480px;margin:0 auto;padding:6px 20px 20px;animation:in .3s ease}
 .view.on{display:flex}
-@keyframes in{from{opacity:0;transform:translateY(12px)}}
-.dpad{position:relative;width:min(78vw,320px);aspect-ratio:1;margin:8px auto;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.04) 0,rgba(255,255,255,.09) 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 20px 60px -20px var(--c1)}
-.dpad button{position:absolute;background:transparent;border-radius:50%;width:33%;height:33%;display:grid;place-items:center}
-.dpad .u{top:2%;left:33.5%}.dpad .d{bottom:2%;left:33.5%}.dpad .l{left:2%;top:33.5%}.dpad .r{right:2%;top:33.5%}
-.dpad .ok{inset:30%;width:auto;height:auto;background:linear-gradient(135deg,var(--c1),var(--c2));font-weight:800;font-size:1.1rem;box-shadow:0 10px 30px -6px var(--c1)}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-.grid button{height:64px;display:grid;place-items:center;font-size:.8rem;color:var(--mute)}
-.grid button svg{color:var(--fg)}
-#pad{flex:1;min-height:260px;border-radius:28px;background:var(--card);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);display:grid;place-items:center;color:var(--mute);text-align:center;font-size:.9rem;touch-action:none}
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.row2 button{height:60px}
-#kb{width:100%;padding:18px;border-radius:20px;border:0;background:var(--card);color:#fff;font:inherit;font-size:1.1rem;outline:none;user-select:text;-webkit-user-select:text;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
-#kb:focus{box-shadow:inset 0 0 0 2px var(--c1)}
-.hint{color:var(--mute);font-size:.85rem;text-align:center}
-h3{color:var(--mute);font-size:.75rem;letter-spacing:.14em;text-transform:uppercase}
-.wide{height:58px;width:100%;font-weight:600}
-.danger{background:rgba(255,59,92,.25)}
-label.wide{display:grid;place-items:center;border-radius:20px;background:linear-gradient(135deg,var(--c1),var(--c2))}
-nav{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 12px);display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:6px;border-radius:24px;background:rgba(20,22,44,.75);backdrop-filter:blur(20px)}
-nav button{background:transparent;height:52px;font-size:.75rem;color:var(--mute);display:grid;place-items:center;gap:2px}
+@keyframes in{from{opacity:0;transform:translateY(10px)}}
+
+/* remote */
+.search{display:flex;gap:10px}
+.field,.search input{width:100%;min-width:0;height:54px;padding:0 18px;border-radius:var(--r);border:0;background:var(--card);color:#fff;font-size:1rem;outline:none;box-shadow:inset 0 0 0 1px var(--line)}
+.search input{flex:1}
+.field:focus,.search input:focus{box-shadow:inset 0 0 0 2px var(--c1)}
+.grad{background:linear-gradient(135deg,var(--c1),var(--c2))}
+#mic{width:54px;height:54px;flex:0 0 54px;display:grid;place-items:center}
+#mic.rec{animation:rec 1s ease-in-out infinite}
+@keyframes rec{50%{transform:scale(1.1)}}
+.apps{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;margin:0 -20px;padding:2px 20px}
+.apps::-webkit-scrollbar{display:none}
+.app{flex:0 0 auto;width:66px;display:flex;flex-direction:column;align-items:center;gap:6px;background:none;font-size:.7rem;color:var(--mute)}
+.app:active{background:none}
+.app i{width:56px;height:56px;border-radius:16px;background:var(--a);display:grid;place-items:center}
+.app i b,.ln i b{width:55%;height:55%;background:#fff;-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat}
+.app span{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dpad{position:relative;width:min(100%,300px,40vh);aspect-ratio:1;margin:4px auto;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.03) 0,rgba(255,255,255,.08) 100%);box-shadow:inset 0 0 0 1px var(--line),0 20px 60px -24px var(--c1)}
+.dpad button{position:absolute;background:transparent;border-radius:50%;width:34%;height:34%;display:grid;place-items:center;color:#dfe3ff}
+.dpad button svg{width:28px;height:28px}
+.dpad .u{top:1%;left:33%}.dpad .d{bottom:1%;left:33%}.dpad .l{left:1%;top:33%}.dpad .r{right:1%;top:33%}
+.dpad .ok{inset:31%;width:auto;height:auto;font-weight:800;font-size:1.1rem;color:#fff;background:linear-gradient(135deg,var(--c1),var(--c2));box-shadow:0 10px 30px -6px var(--c1)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.key{height:68px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-size:.74rem;color:var(--mute);line-height:1}
+.key svg{color:var(--fg);width:22px;height:22px}
+.key.txt{font-size:1.25rem;color:var(--fg)}
+
+/* touchpad */
+.pad{flex:1;min-height:240px;border-radius:24px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line);display:grid;place-items:center;color:var(--mute);text-align:center;font-size:.88rem;line-height:1.7;touch-action:none;padding:20px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.row2 button{height:56px;font-weight:600}
+
+/* cards / forms */
+.card{background:var(--card);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:12px;box-shadow:inset 0 0 0 1px var(--line)}
+.card .field{background:rgba(0,0,0,.25)}
+h3{color:var(--mute);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;font-weight:600}
+.card h3{margin-bottom:-2px}
+.hint{color:var(--mute);font-size:.85rem;line-height:1.55}
+.hint b{color:var(--fg)}
+.wide{height:54px;width:100%;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px}
+.card .wide{background:rgba(255,255,255,.08)}
+.card .wide.grad{background:linear-gradient(135deg,var(--c1),var(--c2))}
+.danger,.card .danger{background:rgba(255,59,92,.22);color:#ffb3c0}
+label.wide{border-radius:var(--r);cursor:pointer}
+.pw{position:relative}.pw .field{padding-right:72px}
+.pw button{position:absolute;right:6px;top:6px;height:42px;padding:0 12px;font-size:.8rem;color:var(--mute);background:transparent}
+.send{display:flex;gap:8px}.send .field{flex:1}.send button{flex:0 0 auto;width:76px;height:54px;font-weight:600}
+
+/* sign in */
+.ln{display:flex;align-items:center;gap:14px;width:100%;padding:12px;text-align:left}
+.ln i{width:46px;height:46px;border-radius:13px;background:var(--a);display:grid;place-items:center;flex:0 0 auto}
+.ln span{flex:1;min-width:0}
+.ln b{display:block;font-weight:600}
+.ln small{display:block;color:var(--mute);font-size:.8rem;margin-top:2px}
+.ln svg{color:var(--mute);width:20px}
+.list{display:flex;flex-direction:column;gap:8px}
+.back{display:flex;align-items:center;gap:6px;background:none;color:var(--mute);font-size:.9rem;padding:4px 0;align-self:flex-start}
+.back svg{width:20px;height:20px}
+.title{display:flex;align-items:center;gap:12px}
+.title i{width:40px;height:40px;border-radius:12px;background:var(--a);display:grid;place-items:center}
+.title i b{width:55%;height:55%;background:#fff;-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat}
+.title h2{font-size:1.25rem}
+.minipad{min-height:150px;flex:0 0 auto}
+.code{font-size:2.1rem;font-weight:800;letter-spacing:.16em;text-align:center;padding:14px;border-radius:16px;background:rgba(0,0,0,.3);font-variant-numeric:tabular-nums;user-select:all;-webkit-user-select:all}
+ol.steps{padding-left:1.2em;display:flex;flex-direction:column;gap:6px}
+ol.steps li{color:var(--mute);font-size:.85rem;line-height:1.5}
+ol.steps b{color:var(--fg)}
+.ok-badge{display:flex;align-items:center;gap:10px;font-weight:600}
+.ok-badge i{width:28px;height:28px;border-radius:50%;background:#1ed760;display:grid;place-items:center;color:#05060f;font-style:normal}
+details summary{cursor:pointer;color:var(--mute);font-size:.85rem;list-style:none}
+details summary::-webkit-details-marker{display:none}
+details[open] summary{margin-bottom:10px}
+
+nav{flex:0 0 auto;margin:0 12px calc(env(safe-area-inset-bottom) + 10px);display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:6px;border-radius:24px;background:rgba(20,22,44,.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:inset 0 0 0 1px var(--line)}
+nav button{background:transparent;height:54px;font-size:.68rem;color:var(--mute);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:18px;min-width:0}
 nav button.on{background:linear-gradient(135deg,var(--c1),var(--c2));color:#fff}
 nav svg{width:20px;height:20px}
-.search{display:flex;gap:10px}
-.search input,.field{flex:1;width:100%;min-width:0;padding:16px 18px;border-radius:18px;border:0;background:var(--card);color:#fff;font:inherit;font-size:1rem;outline:none;user-select:text;-webkit-user-select:text;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
-.search input:focus,.field:focus{box-shadow:inset 0 0 0 2px var(--c1)}
-#mic{width:56px;flex:0 0 56px;display:grid;place-items:center;background:linear-gradient(135deg,var(--c1),var(--c2))}
-#mic.rec{animation:rec 1s ease-in-out infinite}
-@keyframes rec{50%{transform:scale(1.12)}}
-#toast{position:fixed;left:50%;bottom:110px;transform:translate(-50%,200px);background:rgba(20,22,44,.95);padding:12px 18px;border-radius:14px;transition:transform .4s var(--ease)}
+#toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 92px);transform:translate(-50%,200px);max-width:calc(100% - 40px);text-align:center;background:rgba(20,22,44,.97);padding:12px 18px;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.4);transition:transform .4s var(--ease);z-index:9;font-size:.92rem}
 #toast.show{transform:translate(-50%,0)}
 </style></head>
 <body>
-<header><img src="/s/logo.png" alt="Lumen" style="height:26px;filter:drop-shadow(0 0 12px rgba(155,107,255,.6))"><div class="dot" id="dot"></div></header>
+<header><img src="/s/logo.png" alt="Lumen"><div class="conn" id="conn"><i></i><span>Connecting</span></div></header>
 <main>
+  <!-- REMOTE -->
   <section class="view on" id="v-remote">
     <form class="search" id="sf">
       <input id="sq" type="search" enterkeyhint="search" placeholder="Search YouTube" autocomplete="off">
-      <button type="button" id="mic" aria-label="Voice search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+      <button type="button" id="mic" class="grad" aria-label="Voice search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
     </form>
+    <div class="apps" id="apps"></div>
     <div class="dpad">
-      <button class="u" data-k="UP" data-rep><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 15 6-6 6 6"/></svg></button>
-      <button class="d" data-k="DOWN" data-rep><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg></button>
-      <button class="l" data-k="LEFT" data-rep><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 6-6 6 6 6"/></svg></button>
-      <button class="r" data-k="RIGHT" data-rep><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 6 6 6-6 6"/></svg></button>
+      <button class="u" data-k="UP" data-rep aria-label="Up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 15 6-6 6 6"/></svg></button>
+      <button class="d" data-k="DOWN" data-rep aria-label="Down"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
+      <button class="l" data-k="LEFT" data-rep aria-label="Left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m15 6-6 6 6 6"/></svg></button>
+      <button class="r" data-k="RIGHT" data-rep aria-label="Right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg></button>
       <button class="ok" data-k="ENTER">OK</button>
     </div>
     <div class="grid">
-      <button data-k="BACK"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>Back</button>
-      <button data-k="HOME"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11 12 3l9 8v10h-6v-6H9v6H3z"/></svg>Home</button>
-      <button data-k="PLAYPAUSE"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>Play/Pause</button>
-      <button data-v="down" data-rep><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h4l5-4v14l-5-4H4zM17 12h4"/></svg>Vol −</button>
-      <button data-v="mute"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h4l5-4v14l-5-4H4zM17 9l4 6M21 9l-4 6"/></svg>Mute</button>
-      <button data-v="up" data-rep><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h4l5-4v14l-5-4H4zM17 12h4M19 10v4"/></svg>Vol +</button>
+      <button class="key" data-k="BACK"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>Back</button>
+      <button class="key" data-k="HOME"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 11 12 3l9 8v10h-6v-6H9v6H3z"/></svg>Home</button>
+      <button class="key" data-k="PLAYPAUSE"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 5.5v13l8-6.5zM14 5h3v14h-3zM19 5h3v14h-3z"/></svg>Play/Pause</button>
+      <button class="key" data-v="down" data-rep><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 12h4" stroke-linecap="round"/></svg>Vol −</button>
+      <button class="key" data-v="mute"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="m17 9 4 6M21 9l-4 6" stroke-linecap="round"/></svg>Mute</button>
+      <button class="key" data-v="up" data-rep><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 12h4M19 10v4" stroke-linecap="round"/></svg>Vol +</button>
     </div>
   </section>
 
+  <!-- TOUCHPAD -->
   <section class="view" id="v-pad">
-    <div id="pad">Drag to move<br>Tap to click · Two-finger tap = right click<br>Two fingers to scroll</div>
-    <div class="row2"><button id="lc">Left click</button><button id="rc">Right click</button></div>
+    <div class="pad" id="pad">Drag to move the pointer<br>Tap to click · Two-finger tap to right-click<br>Drag with two fingers to scroll</div>
+    <div class="row2"><button data-click="left">Left click</button><button data-click="right">Right click</button></div>
   </section>
 
+  <!-- KEYBOARD -->
   <section class="view" id="v-kb">
-    <input id="kb" placeholder="Type here, it appears on the TV" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <input id="kb" class="field" placeholder="Type here and it appears on the TV" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <p class="hint">Select a text box on the TV first, then type.</p>
     <div class="grid">
-      <button data-k="BACKSPACE">⌫<br>Delete</button><button data-k="ENTER">↵<br>Enter</button><button data-k="TAB">⇥<br>Tab</button>
-      <button data-k="LEFT" data-rep>←</button><button data-k="UP" data-rep>↑</button><button data-k="RIGHT" data-rep>→</button>
-      <button data-k="ESC">Esc</button><button data-k="DOWN" data-rep>↓</button><button data-k="SPACE">Space</button>
+      <button class="key" data-k="ESC">Esc</button>
+      <button class="key txt" data-k="UP" data-rep aria-label="Up">↑</button>
+      <button class="key" data-k="TAB">⇥ Tab</button>
+      <button class="key txt" data-k="LEFT" data-rep aria-label="Left">←</button>
+      <button class="key txt" data-k="DOWN" data-rep aria-label="Down">↓</button>
+      <button class="key txt" data-k="RIGHT" data-rep aria-label="Right">→</button>
+      <button class="key" data-k="BACKSPACE" data-rep>⌫ Delete</button>
+      <button class="key" data-k="SPACE">Space</button>
+      <button class="key" data-k="ENTER">↵ Enter</button>
     </div>
-    <p class="hint">Select a search box on the TV first, then type.</p>
   </section>
 
+  <!-- SIGN IN -->
+  <section class="view" id="v-login">
+    <div id="lg-pick" class="list"></div>
+
+    <div id="lg-web" hidden>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <button class="back" data-lgback><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m15 6-6 6 6 6"/></svg>All apps</button>
+        <div class="title" id="lgw-title"></div>
+        <p class="hint">The sign-in page is opening on the TV. Use the pad below to tap the <b>email</b> box on the TV, then send your details from here.</p>
+        <div class="pad minipad" id="pad2">Touchpad: drag to move · tap to click</div>
+        <div class="card">
+          <h3>Email or username</h3>
+          <div class="send"><input id="lg-user" class="field" type="email" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="you@example.com"><button class="grad" id="lg-user-go">Send</button></div>
+          <h3>Password</h3>
+          <div class="send"><div class="pw" style="flex:1"><input id="lg-pass" class="field" type="password" autocomplete="current-password" placeholder="Password"><button type="button" id="lg-eye">Show</button></div><button class="grad" id="lg-pass-go">Send</button></div>
+          <p class="hint">Only sent to the TV as key presses. Lumen does not save it.</p>
+        </div>
+        <div class="grid" style="grid-template-columns:repeat(3,1fr)">
+          <button class="key" data-k="TAB">⇥<br>Next box</button>
+          <button class="key" data-k="BACKSPACE" data-rep>⌫<br>Delete</button>
+          <button class="key" data-k="ENTER">↵<br>Next / Sign in</button>
+        </div>
+        <button class="wide" id="lg-reopen" style="border-radius:var(--r)">Open the sign-in page again</button>
+      </div>
+    </div>
+
+    <div id="lg-yt" hidden>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <button class="back" data-lgback><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m15 6-6 6 6 6"/></svg>All apps</button>
+        <div class="title" id="lgy-title"></div>
+        <div id="yt-body" style="display:flex;flex-direction:column;gap:14px"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MORE -->
   <section class="view" id="v-more">
-    <h3>Wallpaper</h3>
-    <label class="wide" for="file">Upload photo as wallpaper</label>
-    <input id="file" type="file" accept="image/*" hidden>
-    <h3>Screen</h3>
-    <button class="wide" data-k="F11">Toggle fullscreen</button>
-    <h3>YouTube API key</h3>
-    <input id="ykey" class="field" placeholder="Paste your YouTube API key" autocomplete="off">
-    <button class="wide" id="ysave">Save key</button>
-    <h3>Lumen</h3>
-    <button class="wide" id="upd">Update Lumen</button>
-    <h3>Power</h3>
-    <button class="wide" data-p="restart-ui">Restart Lumen</button>
-    <button class="wide" data-p="reboot">Reboot</button>
-    <button class="wide danger" data-p="off">Power off</button>
+    <div class="card">
+      <h3>Music &amp; videos</h3>
+      <p class="hint">Send files from this phone to the TV. They show up in the Music and Videos apps.</p>
+      <div class="row2">
+        <label class="wide" for="fm" style="background:rgba(255,255,255,.08)">Add music</label>
+        <label class="wide" for="fv" style="background:rgba(255,255,255,.08)">Add videos</label>
+      </div>
+      <input id="fm" type="file" accept="audio/*,.mp3,.m4a,.flac,.ogg,.opus,.wav" multiple hidden>
+      <input id="fv" type="file" accept="video/*,.mp4,.mkv,.webm,.mov" multiple hidden>
+    </div>
+    <div class="card">
+      <h3>Wallpaper</h3>
+      <label class="wide grad" for="file">Upload photo as wallpaper</label>
+      <input id="file" type="file" accept="image/*" hidden>
+    </div>
+    <div class="card">
+      <h3>YouTube API key</h3>
+      <p class="hint">Optional if you sign in to YouTube (Sign in tab). Needed for browsing without an account.</p>
+      <input id="ykey" class="field" placeholder="Paste your YouTube API key" autocomplete="off">
+      <button class="wide" id="ysave">Save key</button>
+    </div>
+    <div class="card">
+      <h3>Screen</h3>
+      <button class="wide" data-k="F11">Toggle fullscreen</button>
+    </div>
+    <div class="card">
+      <h3>Lumen</h3>
+      <button class="wide" id="upd">Update Lumen</button>
+      <button class="wide" data-p="restart-ui">Restart Lumen</button>
+    </div>
+    <div class="card">
+      <h3>Power</h3>
+      <div class="row2"><button class="wide" data-p="reboot">Reboot</button><button class="wide danger" data-p="off">Power off</button></div>
+    </div>
   </section>
 </main>
 <nav>
   <button class="on" data-view="remote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>Remote</button>
-  <button data-view="pad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="3"/></svg>Touchpad</button>
-  <button data-view="kb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>Keyboard</button>
+  <button data-view="pad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 15h18M12 15v5"/></svg>Touchpad</button>
+  <button data-view="kb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>Keyboard</button>
+  <button data-view="login"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Sign in</button>
   <button data-view="more"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>More</button>
 </nav>
 <div id="toast"></div>
 <script>
 const $ = s => document.querySelector(s), $$ = s => document.querySelectorAll(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const post = (u, b) => fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b || {}) }).then(r => r.json());
 let ws;
 function conn() {
   ws = new WebSocket(`ws://${location.host}/ws`);
-  ws.onopen = () => $('#dot').classList.add('on');
+  ws.onopen = () => { $('#conn').classList.add('on'); $('#conn span').textContent = 'Connected'; };
   ws.onmessage = e => { const m = JSON.parse(e.data); if (m.t === 'note') toast(m.msg); };
-  ws.onclose = () => { $('#dot').classList.remove('on'); setTimeout(conn, 1000); };
+  ws.onclose = () => { $('#conn').classList.remove('on'); $('#conn span').textContent = 'Offline'; setTimeout(conn, 1000); };
 }
 conn();
-const send = m => ws && ws.readyState === 1 && ws.send(JSON.stringify(m));
+const send = m => ws && ws.readyState === 1 && (ws.send(JSON.stringify(m)), true);
 const buzz = () => navigator.vibrate && navigator.vibrate(8);
-const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2500); };
+let toastT;
+const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600); };
 
-// Buttons: tap sends once; arrows and volume repeat while held.
+// Buttons: tap sends once; arrows, delete and volume repeat while held.
 $$('[data-k],[data-v]').forEach(b => {
   let rep, delay;
   const fire = () => b.dataset.k ? send({ t: 'key', k: b.dataset.k }) : send({ t: 'vol', d: b.dataset.v });
@@ -136,8 +261,9 @@ $$('[data-k],[data-v]').forEach(b => {
   });
   ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, stop));
 });
+$$('[data-click]').forEach(b => b.onclick = () => { buzz(); send({ t: 'click', b: b.dataset.click }); });
 
-// Search + voice search. Speech recognition only works on secure (https) pages, so on
+// Search + voice search. Speech recognition only works on https pages, so on
 // http://lumen.local we fall back to the phone keyboard's own microphone button.
 const sq = $('#sq');
 const sendSearch = q => { q = q.trim(); if (!q) return; send({ t: 'search', q }); sq.value = ''; sq.blur(); buzz(); };
@@ -151,48 +277,47 @@ $('#mic').onclick = () => {
   r.onend = r.onerror = () => $('#mic').classList.remove('rec');
   r.start();
 };
-fetch('/api/settings').then(r => r.json()).then(s => { $('#ykey').value = s.ytKey || ''; });
-$('#ysave').onclick = async () => {
-  await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ytKey: $('#ykey').value.trim() }) });
-  toast('YouTube key saved'); buzz();
-};
 
 // Tabs
-$$('nav button').forEach(b => b.onclick = () => {
-  $$('nav button').forEach(x => x.classList.toggle('on', x === b));
-  $$('.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + b.dataset.view));
-  if (b.dataset.view === 'kb') setTimeout(() => $('#kb').focus(), 50);
-});
-
-// Touchpad
-const pad = $('#pad'); let last = null, moved = 0, t0 = 0, maxTouch = 0, acc = { x: 0, y: 0, s: 0 }, queued = false;
-const avg = ts => { let x = 0, y = 0; for (const t of ts) { x += t.clientX; y += t.clientY; } return { x: x / ts.length, y: y / ts.length }; };
-function flush() {
-  queued = false;
-  const x = Math.trunc(acc.x), y = Math.trunc(acc.y), s = Math.trunc(acc.s / 22);
-  if (x || y) { send({ t: 'move', x, y }); acc.x -= x; acc.y -= y; }
-  if (s) { send({ t: 'scroll', y: s }); acc.s -= s * 22; }
+function view(name) {
+  $$('nav button').forEach(x => x.classList.toggle('on', x.dataset.view === name));
+  $$('.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + name));
+  $('main').scrollTop = 0;
+  if (name === 'kb') setTimeout(() => $('#kb').focus(), 50);
+  if (name === 'login') ytRefresh();
 }
-pad.addEventListener('touchstart', e => {
-  e.preventDefault();
-  if (e.touches.length === 1) { t0 = Date.now(); moved = 0; maxTouch = 0; }
-  maxTouch = Math.max(maxTouch, e.touches.length); last = avg(e.touches);
-}, { passive: false });
-pad.addEventListener('touchmove', e => {
-  e.preventDefault();
-  const p = avg(e.touches), dx = p.x - last.x, dy = p.y - last.y; last = p;
-  moved += Math.abs(dx) + Math.abs(dy);
-  if (e.touches.length >= 2) acc.s += dy;
-  else { const k = 1.6 + Math.min(Math.hypot(dx, dy), 30) / 10; acc.x += dx * k; acc.y += dy * k; }
-  if (!queued) { queued = true; requestAnimationFrame(flush); }
-}, { passive: false });
-pad.addEventListener('touchend', e => {
-  e.preventDefault();
-  if (e.touches.length) { last = avg(e.touches); return; }
-  if (Date.now() - t0 < 250 && moved < 10) { buzz(); send({ t: 'click', b: maxTouch >= 2 ? 'right' : 'left' }); }
-}, { passive: false });
-$('#lc').onclick = () => { buzz(); send({ t: 'click', b: 'left' }); };
-$('#rc').onclick = () => { buzz(); send({ t: 'click', b: 'right' }); };
+$$('nav button').forEach(b => b.onclick = () => view(b.dataset.view));
+
+// Touchpads (full one and the small one on the sign-in screen)
+function touchpad(pad) {
+  let last = null, moved = 0, t0 = 0, maxTouch = 0, acc = { x: 0, y: 0, s: 0 }, queued = false;
+  const avg = ts => { let x = 0, y = 0; for (const t of ts) { x += t.clientX; y += t.clientY; } return { x: x / ts.length, y: y / ts.length }; };
+  function flush() {
+    queued = false;
+    const x = Math.trunc(acc.x), y = Math.trunc(acc.y), s = Math.trunc(acc.s / 22);
+    if (x || y) { send({ t: 'move', x, y }); acc.x -= x; acc.y -= y; }
+    if (s) { send({ t: 'scroll', y: s }); acc.s -= s * 22; }
+  }
+  pad.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (e.touches.length === 1) { t0 = Date.now(); moved = 0; maxTouch = 0; }
+    maxTouch = Math.max(maxTouch, e.touches.length); last = avg(e.touches);
+  }, { passive: false });
+  pad.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const p = avg(e.touches), dx = p.x - last.x, dy = p.y - last.y; last = p;
+    moved += Math.abs(dx) + Math.abs(dy);
+    if (e.touches.length >= 2) acc.s += dy;
+    else { const k = 1.6 + Math.min(Math.hypot(dx, dy), 30) / 10; acc.x += dx * k; acc.y += dy * k; }
+    if (!queued) { queued = true; requestAnimationFrame(flush); }
+  }, { passive: false });
+  pad.addEventListener('touchend', e => {
+    e.preventDefault();
+    if (e.touches.length) { last = avg(e.touches); return; }
+    if (Date.now() - t0 < 250 && moved < 10) { buzz(); send({ t: 'click', b: maxTouch >= 2 ? 'right' : 'left' }); }
+  }, { passive: false });
+}
+touchpad($('#pad')); touchpad($('#pad2'));
 
 // Keyboard: compare old and new text so phone autocorrect and predictions still work.
 const kb = $('#kb'); let prev = '';
@@ -208,15 +333,120 @@ kb.addEventListener('keydown', e => {
   else if (e.key === 'Backspace' && !kb.value) send({ t: 'key', k: 'BACKSPACE' });
 });
 
-// More: wallpaper upload + power
+/* ---------- apps: quick launch + sign in ---------- */
+let apps = [], lgApp = null;
+const logo = (a, cls = 'app') => `<i style="--a:${esc(a.a)}"><b style="--m:url(/s/icons/${esc(a.logo)}.svg)"></b></i>`;
+const chevron = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>';
+fetch('/s/apps.json').then(r => r.json()).then(list => {
+  apps = list;
+  $('#apps').innerHTML = apps.map((a, i) => `<button class="app" data-i="${i}">${logo(a)}<span>${esc(a.name)}</span></button>`).join('');
+  $$('#apps .app').forEach(b => b.onclick = () => { buzz(); send({ t: 'open', app: apps[b.dataset.i].name }) || toast('Not connected to the TV'); });
+  const signable = apps.filter(a => a.login || a.codeLogin);
+  $('#lg-pick').innerHTML = `<h3 style="margin:2px 0 4px">Sign in to an app</h3><p class="hint" style="margin-bottom:6px">Pick an app. The TV opens its sign-in page, and you type your details on this phone.</p>` +
+    signable.map(a => `<button class="ln" data-app="${esc(a.name)}">${logo(a)}<span><b>${esc(a.name)}</b><small>${a.codeLogin ? 'Sign in with a code on this phone' : 'Opens the sign-in page on the TV'}</small></span>${chevron}</button>`).join('') +
+    `<p class="hint" style="margin-top:8px">Netflix and Prime Video may not play on the Pi even after you sign in, because of their copy protection.</p>`;
+  $$('#lg-pick .ln').forEach(b => b.onclick = () => pickApp(apps.find(a => a.name === b.dataset.app)));
+});
+function lgShow(which) { ['pick', 'web', 'yt'].forEach(k => $('#lg-' + k).hidden = k !== which); $('main').scrollTop = 0; }
+$$('[data-lgback]').forEach(b => b.onclick = () => { lgShow('pick'); clearInterval(ytPoll); });
+function pickApp(a, web) {
+  lgApp = a; buzz();
+  if (a.codeLogin && !web) { $('#lgy-title').innerHTML = `${logo(a)}<h2>${esc(a.name)}</h2>`; lgShow('yt'); return ytRefresh(); }
+  $('#lgw-title').innerHTML = `${logo(a)}<h2>Sign in to ${esc(a.name)}</h2>`;
+  lgShow('web'); send({ t: 'login', app: a.name, web: true }) || toast('Not connected to the TV');
+}
+$('#lg-reopen').onclick = () => lgApp && (buzz(), send({ t: 'login', app: lgApp.name, web: true }));
+$('#lg-eye').onclick = () => { const p = $('#lg-pass'); p.type = p.type === 'password' ? 'text' : 'password'; $('#lg-eye').textContent = p.type === 'password' ? 'Show' : 'Hide'; };
+$('#lg-user-go').onclick = () => { const v = $('#lg-user').value; if (!v) return; send({ t: 'text', s: v }); buzz(); toast('Sent. Now press Next / Sign in.'); };
+$('#lg-pass-go').onclick = () => { const v = $('#lg-pass').value; if (!v) return; send({ t: 'text', s: v }); buzz(); $('#lg-pass').value = ''; toast('Password sent. Press Next / Sign in.'); };
+$('#lg-user').onkeydown = e => e.key === 'Enter' && (e.preventDefault(), $('#lg-user-go').click());
+$('#lg-pass').onkeydown = e => e.key === 'Enter' && (e.preventDefault(), $('#lg-pass-go').click());
+
+/* ---------- YouTube: sign in with a code (no typing on the TV) ---------- */
+let ytPoll, ytState = {};
+async function ytRefresh() {
+  if ($('#lg-yt').hidden) return;
+  ytState = await fetch('/api/yt/status').then(r => r.json()).catch(() => ({}));
+  const B = $('#yt-body'), st = ytState;
+  clearInterval(ytPoll);
+  if (st.signedIn) {
+    B.innerHTML = `<div class="card"><div class="ok-badge"><i>✓</i>Signed in to YouTube</div><p class="hint">Your subscriptions, liked videos and playlists now show in YouTube on the TV.</p>
+      <button class="wide grad" id="yt-open">Open YouTube on the TV</button><button class="wide danger" id="yt-out">Sign out</button></div>`;
+    $('#yt-open').onclick = () => send({ t: 'open', app: lgApp?.name || 'YouTube' });
+    $('#yt-out').onclick = async () => { if (!confirm('Sign out of YouTube on the TV?')) return; await post('/api/yt/logout'); toast('Signed out'); ytRefresh(); };
+  } else if (st.pending?.code) {
+    const url = st.pending.url || 'https://www.google.com/device';
+    B.innerHTML = `<div class="card"><h3>Your code</h3><div class="code" id="yt-code">${esc(st.pending.code)}</div>
+      <button class="wide" id="yt-copy">Copy code</button>
+      <a class="btn wide grad" href="${esc(url)}" target="_blank" rel="noopener">Open ${esc(url.replace(/^https?:\/\/(www\.)?/, ''))}</a>
+      <ol class="steps"><li>Tap <b>Copy code</b>, then <b>Open google.com/device</b>.</li><li>Paste the code, pick your Google account and allow access.</li><li>Come back here. The TV updates by itself.</li></ol>
+      <p class="hint" style="text-align:center">Waiting for you to sign in…</p></div>`;
+    $('#yt-copy').onclick = () => copy(st.pending.code);
+    ytPoll = setInterval(async () => { const s = await fetch('/api/yt/status').then(r => r.json()).catch(() => ({})); if (s.signedIn || !s.pending) { clearInterval(ytPoll); if (s.signedIn) toast('Signed in!'); ytRefresh(); } }, 3000);
+  } else if (st.configured) {
+    B.innerHTML = `<div class="card"><p class="hint">You'll get a short code. Enter it at google.com/device on this phone. You don't need to type a password on the TV.</p>
+      ${st.error ? `<p class="hint" style="color:#ffb3c0">${esc(st.error)}</p>` : ''}
+      <button class="wide grad" id="yt-go">Get sign-in code</button></div>
+      <details class="card"><summary>Change Google client ID / secret</summary>${setupFields()}</details>
+      <button class="wide" id="yt-web" style="border-radius:var(--r)">Sign in on the TV's web page instead</button>`;
+    $('#yt-go').onclick = async () => {
+      buzz(); $('#yt-go').textContent = 'Getting code…';
+      send({ t: 'login', app: lgApp?.name || 'YouTube' });   // open YouTube on the TV so the code shows there too
+      const r = await post('/api/yt/login').catch(() => ({ msg: 'Lumen is not responding.' }));
+      r.ok ? ytRefresh() : (toast(r.msg), $('#yt-go').textContent = 'Get sign-in code');
+    };
+    bindSetup(); $('#yt-web').onclick = () => pickApp(lgApp, true);
+  } else {
+    B.innerHTML = `<div class="card"><h3>One-time setup (about 3 minutes)</h3>
+      <ol class="steps">
+        <li>On this phone open <b>console.cloud.google.com</b>, in the same project as your YouTube API key.</li>
+        <li><b>APIs &amp; Services → OAuth consent screen</b>: choose <b>External</b>, fill in an app name and your email, save. Then under <b>Audience</b> select <b>Publish app</b> so the sign-in doesn't expire after 7 days.</li>
+        <li><b>Credentials → Create credentials → OAuth client ID</b>. Application type: <b>TVs and Limited Input devices</b>. Create.</li>
+        <li>Copy the <b>Client ID</b> and <b>Client secret</b> into the boxes below.</li>
+      </ol>${setupFields()}</div>
+      <button class="wide" id="yt-web" style="border-radius:var(--r)">Skip: sign in on the TV's web page instead</button>`;
+    bindSetup(); $('#yt-web').onclick = () => pickApp(lgApp, true);
+  }
+}
+const setupFields = () => `<div style="display:flex;flex-direction:column;gap:10px"><input id="yt-cid" class="field" placeholder="Client ID" autocomplete="off" autocapitalize="off" spellcheck="false">
+  <input id="yt-sec" class="field" placeholder="Client secret" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="wide grad" id="yt-save">Save</button></div>`;
+function bindSetup() {
+  fetch('/api/settings').then(r => r.json()).then(s => { $('#yt-cid') && ($('#yt-cid').value = s.ytClientId || ''); $('#yt-sec') && ($('#yt-sec').value = s.ytClientSecret || ''); });
+  $('#yt-save').onclick = async () => {
+    const id = $('#yt-cid').value.trim(), sec = $('#yt-sec').value.trim();
+    if (!id || !sec) return toast('Paste both the client ID and secret');
+    await post('/api/settings', { ytClientId: id, ytClientSecret: sec }); toast('Saved'); buzz(); ytRefresh();
+  };
+}
+function copy(text) {   // clipboard API needs https, so use the old way on http://lumen.local
+  const t = document.createElement('textarea'); t.value = text; t.style.cssText = 'position:fixed;opacity:0'; document.body.append(t); t.select();
+  let ok = false; try { ok = document.execCommand('copy'); } catch { }
+  t.remove(); navigator.clipboard?.writeText(text).catch(() => { });
+  toast(ok ? 'Code copied' : 'Press and hold the code to copy it');
+}
+
+/* ---------- More ---------- */
+fetch('/api/settings').then(r => r.json()).then(s => { $('#ykey').value = s.ytKey || ''; });
+$('#ysave').onclick = async () => { await post('/api/settings', { ytKey: $('#ykey').value.trim() }); toast('YouTube key saved'); buzz(); };
 $('#file').onchange = async () => {
   const f = $('#file').files[0]; if (!f) return;
   toast('Uploading…');
   const fd = new FormData(); fd.append('file', f);
   const r = await fetch('/api/wallpaper', { method: 'POST', body: fd }).then(r => r.json());
-  await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wallpaper: 'img:' + r.name }) });
+  await post('/api/settings', { wallpaper: 'img:' + r.name });
   toast('Wallpaper set'); $('#file').value = '';
 };
+function uploadMedia(input, kind) {
+  const fs = [...input.files]; if (!fs.length) return;
+  const fd = new FormData(); fs.forEach(f => fd.append('file', f, f.name));
+  const x = new XMLHttpRequest(); x.open('POST', `/api/media/${kind}/upload`);
+  x.upload.onprogress = e => e.lengthComputable && toast(`Uploading ${fs.length} file${fs.length > 1 ? 's' : ''}… ${Math.round(e.loaded / e.total * 100)}%`);
+  x.onload = () => { let n = 0; try { n = JSON.parse(x.responseText).saved.length; } catch { } toast(n ? `Added ${n} file${n > 1 ? 's' : ''} to ${kind === 'music' ? 'Music' : 'Videos'}` : 'Nothing added. Is the file type supported?'); input.value = ''; };
+  x.onerror = () => { toast('Upload failed'); input.value = ''; };
+  x.send(fd);
+}
+$('#fm').onchange = () => uploadMedia($('#fm'), 'music');
+$('#fv').onchange = () => uploadMedia($('#fv'), 'videos');
 $('#upd').onclick = () => { fetch('/api/update', { method: 'POST' }); toast('Updating. Watch the TV for progress.'); };
 $$('[data-p]').forEach(b => b.onclick = () => {
   const a = b.dataset.p, names = { off: 'Power off', reboot: 'Reboot', 'restart-ui': 'Restart Lumen' };

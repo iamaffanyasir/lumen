@@ -1,52 +1,106 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>YouTube · Lumen</title><link rel="stylesheet" href="/s/style.css">
 <style>
-.wall{--g:radial-gradient(70% 60% at 10% 0%,#4a0a12 0,transparent 70%),#0a0507}
+:root{--yt:#ff0033;--ybg:#0b0709}
+html{background:var(--ybg)}
+.wall{--g:var(--ybg)}
+.hbg{position:fixed;top:0;right:0;width:64vw;height:68vh;z-index:0;background:center/cover no-repeat;opacity:0;transition:opacity .45s}
+.hbg.on{opacity:.55}
+.hbg::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,var(--ybg) 0,rgba(11,7,9,.55) 40%,transparent 75%),linear-gradient(0deg,var(--ybg) 0,transparent 55%)}
 .yt{position:relative;z-index:1;height:100%;display:flex;flex-direction:column}
-.bar{display:flex;align-items:center;gap:1.5vw;padding:4vh 5vw 2vh}
-.ytlogo{display:flex;align-items:center;gap:.5em;font-weight:800;font-size:1.5rem}
-.ytlogo i{width:1.6em;height:1.6em;background:#ff0033;-webkit-mask:url(/s/icons/youtube.svg) center/contain no-repeat;mask:url(/s/icons/youtube.svg) center/contain no-repeat}
-#q{flex:1;max-width:46vw;margin:0}
-.hintr{color:var(--mute);font-size:.9rem}
-.view{flex:1;overflow:hidden;position:relative}
-#rows{transition:transform .4s var(--ease);will-change:transform}
-.yrow{padding:1.2vh 0 2.4vh}
-.yrow h2{padding:0 5vw .8vh;font-size:1.15rem;font-weight:700}
-.yrow .track{gap:1.4vw}
-.card{flex:0 0 auto;width:20vw;text-align:left;border-radius:14px;border:3px solid transparent;transition:transform .22s var(--ease);will-change:transform;position:relative}
-.card .th{position:relative;border-radius:11px;overflow:hidden;background:#1a1420;aspect-ratio:16/9}
+
+/* top bar */
+.bar{display:flex;align-items:center;gap:.9vw;padding:3.4vh 4.5vw 0;flex:0 0 auto}
+.ytlogo{display:flex;align-items:center;gap:.45em;font-weight:800;font-size:1.45rem;margin-right:1.4vw;letter-spacing:-.02em}
+.ytlogo i{width:1.55em;height:1.55em;background:var(--yt);-webkit-mask:url(/s/icons/youtube.svg) center/contain no-repeat;mask:url(/s/icons/youtube.svg) center/contain no-repeat}
+.bi{height:2.9rem;padding:0 1.25em;border-radius:99px;background:rgba(255,255,255,.08);border:2px solid transparent;font-weight:600;color:#e6e6ea;
+  display:flex;align-items:center;gap:.5em;white-space:nowrap;transition:transform .18s var(--ease),background .2s}
+.bi svg{width:1.15em;height:1.15em}
+.bi.on{background:#f1f1f1;color:#0b0709}
+.bi:focus{border-color:#fff;transform:scale(1.06)}
+input.bi{width:21vw;font:inherit;font-weight:500;color:#fff;outline:none;padding-left:2.6em;
+  background:rgba(255,255,255,.08) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23aaa' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") 1em center/1.1em no-repeat}
+input.bi::placeholder{color:#9a9aa5}
+.acct{margin-left:auto}
+.acct img{width:1.8rem;height:1.8rem;border-radius:50%;margin-left:-.6em}
+
+/* preview of the focused video */
+.hero{flex:0 0 auto;height:31vh;padding:4vh 4.5vw 0;display:flex;flex-direction:column;justify-content:flex-end;padding-bottom:2.4vh}
+.hero>*{max-width:52vw;transition:opacity .25s}
+.hero.swap>*{opacity:0}
+.hero h1{font-size:2.15rem;line-height:1.18;font-weight:800;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;letter-spacing:-.01em}
+.hero .meta{display:flex;flex-wrap:wrap;align-items:center;gap:.5em .9em;color:#c9c9d1;margin-top:.8rem;font-size:1rem}
+.hero .meta b{color:#fff}
+.hero .badge{background:var(--yt);color:#fff;font-weight:700;font-size:.78rem;padding:.2em .55em;border-radius:5px;letter-spacing:.04em}
+.hero p{color:#a5a5b0;margin-top:.7rem;line-height:1.5;font-size:.95rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-width:46vw;min-height:3em}
+
+/* rows */
+.view{flex:1;overflow:hidden;position:relative;min-height:0}
+#rows{transition:transform .4s var(--ease);will-change:transform;padding-top:.6vh}
+.yrow{padding:0 0 3vh}
+.yrow h2{padding:0 4.5vw .9vh;font-size:1.12rem;font-weight:700;display:flex;align-items:center;gap:.6em;height:2.2rem}
+.yrow h2 img{width:1.8rem;height:1.8rem;border-radius:50%}
+.yrow h2 span{color:var(--mute);font-weight:500;font-size:.9rem}
+.yrow .track{gap:1.2vw;padding:0 4.5vw}
+.card{flex:0 0 auto;width:17.6vw;text-align:left;border-radius:14px;transition:transform .22s var(--ease);will-change:transform;position:relative}
+.card .th{position:relative;border-radius:12px;overflow:hidden;background:#1d1519;aspect-ratio:16/9;outline:3px solid transparent;outline-offset:3px;transition:outline-color .15s}
 .card img{width:100%;height:100%;object-fit:cover;display:block}
-.card .dur{position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.8);padding:2px 6px;border-radius:5px;font-size:.8rem;font-weight:600}
-.card .t{padding:.6em .3em 0;font-weight:600;font-size:.95rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;opacity:.75}
-.card small{display:block;color:var(--mute);padding:.2em .3em;font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.card:focus{transform:scale(1.07);border-color:#fff;z-index:2}
+.card .dur{position:absolute;right:6px;bottom:7px;background:rgba(0,0,0,.82);padding:2px 6px;border-radius:5px;font-size:.78rem;font-weight:600;font-variant-numeric:tabular-nums}
+.card .dur.live{background:var(--yt)}
+.card .pg{position:absolute;left:0;right:0;bottom:0;height:4px;background:rgba(255,255,255,.35)}
+.card .pg i{display:block;height:100%;background:var(--yt)}
+.card .t{padding:.65em .2em 0;font-weight:600;font-size:.92rem;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;opacity:.8;min-height:2.6em}
+.card small{display:block;color:var(--mute);padding:.25em .2em 0;font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card:focus{transform:scale(1.06);z-index:2}
+.card:focus .th{outline-color:#fff}
 .card:focus .t{opacity:1}
-.msg{max-width:640px;margin:12vh auto;text-align:center}.msg p{color:var(--mute);margin:1rem 0 2rem;line-height:1.6}
-.msg .opts{grid-template-columns:1fr 1fr}
+.loading{padding:2vh 4.5vw;color:var(--mute);display:flex;align-items:center;gap:.8em}
+.loading i{width:1.2em;height:1.2em;border-radius:50%;border:3px solid rgba(255,255,255,.2);border-top-color:#fff;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(1turn)}}
+.msg{max-width:720px;margin:4vh auto 0;text-align:center}
+.msg h2{font-size:1.6rem}.msg p{color:var(--mute);margin:1rem 0 2rem;line-height:1.6}
+.msg .opts,.ov .opts{display:flex;justify-content:center;flex-wrap:wrap;gap:.8rem}
+.msg .opt,.ov .opt{min-width:11rem}
+.msg .opt:focus,.ov .opt:focus{background:#f1f1f1;color:#0b0709}
+
+/* overlay (sign in etc.) */
+.ov{position:fixed;inset:0;z-index:80;background:rgba(5,3,4,.82);display:grid;place-items:center;opacity:0;pointer-events:none;transition:opacity .25s}
+.ov.on{opacity:1;pointer-events:auto}
+.ov .box{width:min(640px,46vw);background:#17111a;border:1px solid #2c2230;border-radius:24px;padding:2.6rem;text-align:center}
+.ov h2{font-size:1.6rem}.ov p{color:#b6b6c2;margin:1rem 0;line-height:1.6}
+.ov .code{font-size:3rem;font-weight:800;letter-spacing:.18em;margin:1.2rem 0;font-variant-numeric:tabular-nums;color:#fff}
+.ov .opts{margin-top:1.6rem}
+
 /* player */
 #player{position:fixed;inset:0;background:#000;z-index:70;display:none}
 #player.on{display:block}
 #player iframe{width:100%;height:100%;border:0;pointer-events:none}
-.osd{position:fixed;left:0;right:0;bottom:0;z-index:71;padding:12vh 5vw 5vh;background:linear-gradient(transparent,rgba(0,0,0,.85));opacity:0;transition:opacity .3s;pointer-events:none}
+.osd{position:fixed;left:0;right:0;bottom:0;z-index:71;padding:14vh 5vw 5vh;background:linear-gradient(transparent,rgba(0,0,0,.88));opacity:0;transition:opacity .3s;pointer-events:none}
 .osd.on{opacity:1}
-.osd h3{font-size:1.6rem;margin-bottom:.3rem}.osd p{color:#bbb;margin-bottom:1.4rem}
+.osd h3{font-size:1.7rem;margin-bottom:.3rem;max-width:70vw}.osd p{color:#bbb;margin-bottom:1.4rem}
 .pbar{height:6px;border-radius:9px;background:rgba(255,255,255,.25);overflow:hidden}
-.pbar i{display:block;height:100%;background:#ff0033;transform-origin:left;transform:scaleX(0);transition:transform .5s linear}
+.pbar i{display:block;height:100%;background:var(--yt);transform-origin:left;transform:scaleX(0);transition:transform .5s linear}
 .ptime{display:flex;justify-content:space-between;margin-top:.6rem;color:#ddd;font-variant-numeric:tabular-nums}
 .keys{color:#999;font-size:.85rem;margin-top:.8rem}
-.state{position:fixed;left:50%;top:50%;z-index:72;width:7vw;height:7vw;margin:-3.5vw;border-radius:50%;background:rgba(0,0,0,.6);display:grid;place-items:center;font-size:2.5vw;opacity:0;transform:scale(.8);transition:opacity .25s,transform .25s;pointer-events:none}
+.state{position:fixed;left:50%;top:50%;z-index:72;min-width:7vw;height:7vw;margin:-3.5vw 0 0 -3.5vw;padding:0 1.5vw;border-radius:99px;background:rgba(0,0,0,.65);display:grid;place-items:center;font-size:2.2vw;font-weight:700;opacity:0;transform:scale(.8);transition:opacity .25s,transform .25s;pointer-events:none}
 .state.on{opacity:1;transform:none}
 </style></head>
 <body>
 <div class="wall"></div>
+<div class="hbg" id="hbg"></div>
 <div class="yt">
-  <div class="bar">
+  <div class="bar" id="bar">
     <div class="ytlogo"><i></i>YouTube</div>
-    <input id="q" class="txt" placeholder="Search" autocomplete="off">
-    <span class="hintr">Tip: use voice search on the phone remote</span>
+    <input id="q" class="bi" placeholder="Search" autocomplete="off">
+    <button class="bi on" data-tab="home">Home</button>
+    <button class="bi" data-tab="subs">Subscriptions</button>
+    <button class="bi" data-tab="library">Library</button>
+    <button class="bi acct" id="acct">Sign in</button>
   </div>
+  <div class="hero" id="hero"><h1 id="hT"></h1><div class="meta" id="hM"></div><p id="hD"></p></div>
   <div class="view"><div id="rows"></div></div>
 </div>
+<div class="ov" id="ov"><div class="box" id="ovBox"></div></div>
 <div id="player"><div id="yp"></div></div>
 <div class="osd" id="osd"><h3 id="oT"></h3><p id="oC"></p><div class="pbar"><i id="oB"></i></div>
   <div class="ptime"><span id="oN">0:00</span><span id="oD">0:00</span></div>
@@ -54,85 +108,238 @@
 <div class="state" id="st"></div>
 <script src="/s/osd.js"></script>
 <script>
-const $ = s => document.querySelector(s), Q = $('#q'), R = $('#rows');
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)], Q = $('#q'), R = $('#rows');
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const CATS = [['Trending', 0], ['Music', 10], ['Gaming', 20], ['Sports', 17], ['Entertainment', 24], ['Comedy', 23], ['News', 25], ['Science & Tech', 28]];
-let key = '', region = 'IN', rowsData = [], cur = null, yp = null, apiReady = null;
+const CATS = [['Music', 10], ['Gaming', 20], ['Sports', 17], ['Entertainment', 24], ['Comedy', 23], ['News', 25], ['Science & Tech', 28]];
+let key = '', region = 'IN', token = '', me = null, tab = 'home', rowsData = [], hist = [], cur = null, yp = null, apiReady = null, loadId = 0;
+const cache = new Map();
 
-/* ---------- YouTube Data API ---------- */
-async function yt(path) {
-  const r = await fetch(`https://www.googleapis.com/youtube/v3/${path}&key=${encodeURIComponent(key)}`).then(r => r.json());
-  if (r.error) throw r.error.message; return r.items || [];
+/* ---------- YouTube Data API (your Google account if signed in, otherwise the API key) ---------- */
+async function getToken(force) {
+  try { token = (await fetch('/api/yt/token' + (force ? '?force=1' : '')).then(r => r.json())).access_token || ''; } catch { token = ''; }
+  return token;
 }
-const VPARTS = 'part=snippet,contentDetails,statistics&maxResults=20';
-const chart = cat => yt(`videos?${VPARTS}&chart=mostPopular&regionCode=${region}${cat ? '&videoCategoryId=' + cat : ''}`);
-async function search(q) {   // 100 units for search + 1 unit for durations
-  const ids = (await yt(`search?part=id&type=video&maxResults=40&q=${encodeURIComponent(q)}`)).map(v => v.id.videoId).join(',');
-  return ids ? yt(`videos?part=snippet,contentDetails,statistics&id=${ids}`) : [];
+async function yt(path, retry = true) {
+  const ck = (token ? 'u:' : 'k:') + path; if (cache.has(ck)) return cache.get(ck);
+  const url = `https://www.googleapis.com/youtube/v3/${path}${token ? '' : '&key=' + encodeURIComponent(key)}`;
+  const r = await fetch(url, token ? { headers: { Authorization: 'Bearer ' + token } } : {}).then(r => r.json());
+  if (r.error) {
+    if (r.error.code === 401 && token && retry) { await getToken(true); return yt(path, false); }
+    throw r.error.message || 'YouTube error';
+  }
+  cache.set(ck, r.items || []); return r.items || [];
 }
-const dur = iso => { const m = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/.exec(iso || '') || []; const h = +m[1] || 0, mi = +m[2] || 0, s = +m[3] || 0;
-  return (h ? h + ':' + String(mi).padStart(2, '0') : mi) + ':' + String(s).padStart(2, '0'); };
-const views = n => { n = +n; return !n ? '' : n >= 1e9 ? (n / 1e9).toFixed(1) + 'B views' : n >= 1e6 ? (n / 1e6).toFixed(1) + 'M views' : n >= 1e3 ? Math.round(n / 1e3) + 'K views' : n + ' views'; };
+const secs = iso => { const m = /P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/.exec(iso || '') || []; return (+m[1] || 0) * 86400 + (+m[2] || 0) * 3600 + (+m[3] || 0) * 60 + (+m[4] || 0); };
+const norm = v => { const s = v.snippet, t = s.thumbnails || {};
+  return { id: v.id, title: s.title, channel: s.channelTitle, channelId: s.channelId, desc: s.description || '', cat: s.categoryId,
+    thumb: (t.high || t.medium || t.default || {}).url, big: (t.maxres || t.standard || t.high || {}).url,
+    dur: secs(v.contentDetails?.duration), views: +(v.statistics?.viewCount || 0), published: s.publishedAt, live: s.liveBroadcastContent === 'live' }; };
+const fromHist = h => ({ ...h, big: h.thumb, desc: '', watched: h.ts });
+const VP = 'part=snippet,contentDetails,statistics';
+const chart = cat => yt(`videos?${VP}&maxResults=24&chart=mostPopular&regionCode=${region}${cat ? '&videoCategoryId=' + cat : ''}`).then(a => a.map(norm));
+async function videos(ids) {
+  ids = [...new Set(ids)].filter(Boolean); const out = [];
+  for (let i = 0; i < ids.length; i += 50) out.push(...await yt(`videos?${VP}&id=${ids.slice(i, i + 50).join(',')}`));
+  return out.map(norm);
+}
+const uploads = (ch, n) => yt(`playlistItems?part=contentDetails&maxResults=${n}&playlistId=UU${ch.slice(2)}`)
+  .then(a => a.map(x => ({ id: x.contentDetails.videoId, at: x.contentDetails.videoPublishedAt || '' })));
+const subsList = () => yt('subscriptions?part=snippet&mine=true&maxResults=50&order=relevance')
+  .then(a => a.map(s => ({ id: s.snippet.resourceId.channelId, title: s.snippet.title, thumb: s.snippet.thumbnails?.default?.url })));
+async function subsFeed(subs) {
+  const res = await Promise.allSettled(subs.slice(0, 25).map(c => uploads(c.id, 4)));
+  const ids = res.flatMap(r => r.status === 'fulfilled' ? r.value : []).sort((a, b) => b.at.localeCompare(a.at)).slice(0, 40).map(x => x.id);
+  return (await videos(ids)).sort((a, b) => (b.published || '').localeCompare(a.published || ''));
+}
+const liked = () => yt(`videos?${VP}&maxResults=40&myRating=like`).then(a => a.map(norm));
+const dedupe = list => { const s = new Set(); return list.filter(v => v?.id && !s.has(v.id) && s.add(v.id)); };
+async function suggested() {   // built from what you watched on this TV: new videos from those channels + popular in those topics
+  if (!hist.length) return [];
+  const seen = new Set(hist.map(h => h.id)), count = {};
+  hist.slice(0, 40).forEach(h => h.cat && (count[h.cat] = (count[h.cat] || 0) + 1));
+  const cats = Object.keys(count).sort((a, b) => count[b] - count[a]).slice(0, 2);
+  const chans = [...new Set(hist.map(h => h.channelId).filter(Boolean))].slice(0, 8);
+  const [ups, pops] = await Promise.all([Promise.allSettled(chans.map(c => uploads(c, 6))), Promise.allSettled(cats.map(chart))]);
+  const fromCh = await videos(ups.flatMap(r => r.status === 'fulfilled' ? r.value : []).map(x => x.id).filter(id => !seen.has(id)).slice(0, 40));
+  const pop = pops.flatMap(r => r.status === 'fulfilled' ? r.value : []).filter(v => !seen.has(v.id));
+  const mix = []; for (let i = 0; i < Math.max(fromCh.length, pop.length); i++) mix.push(fromCh[i], pop[i]);
+  return dedupe(mix).slice(0, 30);
+}
+const unfinished = h => h.pos > 20 && h.len && h.pos < h.len - 25;
+
+/* ---------- formatting ---------- */
+const fmt = s => { s = Math.floor(s || 0); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = String(s % 60).padStart(2, '0'); return h ? `${h}:${String(m).padStart(2, '0')}:${x}` : `${m}:${x}`; };
+const views = n => !n ? '' : n >= 1e9 ? (n / 1e9).toFixed(1) + 'B views' : n >= 1e6 ? (n / 1e6).toFixed(1) + 'M views' : n >= 1e3 ? Math.round(n / 1e3) + 'K views' : n + ' views';
+function ago(t) {
+  if (!t) return ''; const s = (Date.now() - (typeof t === 'number' ? t * 1000 : Date.parse(t))) / 1000;
+  for (const [n, u] of [[31536e3, 'year'], [2592e3, 'month'], [604800, 'week'], [86400, 'day'], [3600, 'hour'], [60, 'minute']])
+    if (s >= n) { const k = Math.floor(s / n); return `${k} ${u}${k > 1 ? 's' : ''} ago`; }
+  return 'just now';
+}
 
 /* ---------- rows ---------- */
-function render() {
-  R.innerHTML = rowsData.map((row, r) => `<section class="yrow"><h2>${esc(row.title)}</h2><div class="track">${row.items.map((v, i) => {
-    const s = v.snippet, th = s.thumbnails.medium || s.thumbnails.default;
-    return `<button class="card" data-r="${r}" data-i="${i}" style="animation:rise .4s var(--ease) backwards;animation-delay:${Math.min(i, 6) * 40}ms">
-      <div class="th"><img src="${esc(th.url)}" loading="lazy" decoding="async" alt=""><span class="dur">${dur(v.contentDetails?.duration)}</span></div>
-      <div class="t">${esc(s.title)}</div><small>${esc(s.channelTitle)}${v.statistics ? ' · ' + views(v.statistics.viewCount) : ''}</small></button>`;
+const spin = t => `<div class="loading"><i></i>${esc(t)}</div>`;
+function render(rows, focus = true) {
+  rowsData = rows.filter(r => r.items?.length);
+  if (!rowsData.length) return false;
+  R.innerHTML = rowsData.map((row, r) => `<section class="yrow">${row.title ? `<h2>${row.av ? `<img src="${esc(row.av)}" alt="">` : ''}${esc(row.title)}${row.note ? `<span>${esc(row.note)}</span>` : ''}</h2>` : ''}<div class="track">${row.items.map((v, i) => {
+    const pct = v.pos && v.len ? Math.min(100, v.pos / v.len * 100) : 0;
+    const meta = v.watched ? [v.channel, 'Watched ' + ago(v.watched)] : [v.channel, views(v.views), ago(v.published)];
+    return `<button class="card" data-r="${r}" data-i="${i}" style="animation:rise .4s var(--ease) backwards;animation-delay:${Math.min(i, 6) * 35}ms">
+      <div class="th"><img src="${esc(v.thumb)}" loading="lazy" decoding="async" alt="">${v.live ? '<span class="dur live">LIVE</span>' : v.dur ? `<span class="dur">${fmt(v.dur)}</span>` : ''}${pct ? `<span class="pg"><i style="width:${pct}%"></i></span>` : ''}</div>
+      <div class="t">${esc(v.title)}</div><small>${esc(meta.filter(Boolean).join(' · '))}</small></button>`;
   }).join('')}</div></section>`).join('');
   R.style.transform = 'none';
-  const first = R.querySelector('.card'); if (first) focusCard(first);
+  hero(rowsData[0].items[0]);
+  if (focus) focusCard(R.querySelector('.card'));
+  return true;
 }
-async function home() {
-  R.innerHTML = '<p class="hint" style="padding:0 5vw">Loading…</p>';
-  const res = await Promise.allSettled(CATS.map(([, c]) => chart(c)));
-  rowsData = CATS.map(([title], i) => ({ title, items: res[i].status === 'fulfilled' ? res[i].value : [] })).filter(r => r.items.length);
-  if (!rowsData.length) return showMsg('Could not load YouTube', String(res[0].reason || 'Check your API key in Settings → YouTube.'));
-  render();
+let heroT;
+function hero(v) {
+  const H = $('#hero'); if (!v) { H.style.visibility = 'hidden'; $('#hbg').classList.remove('on'); return; }
+  H.style.visibility = ''; H.classList.add('swap'); clearTimeout(heroT);
+  heroT = setTimeout(() => {
+    $('#hT').textContent = v.title;
+    const bits = [`<b>${esc(v.channel)}</b>`, v.live ? '<span class="badge">LIVE</span>' : '', esc(views(v.views)), esc(ago(v.published)),
+      v.pos && v.len ? `${fmt(v.len - v.pos)} left` : v.dur ? fmt(v.dur) : ''];
+    $('#hM').innerHTML = bits.filter(Boolean).join('<span>·</span>');
+    $('#hD').textContent = (v.desc || '').split('\n').find(l => l.trim()) || '';
+    const bg = $('#hbg'); if (v.big || v.thumb) { bg.style.backgroundImage = `url("${v.big || v.thumb}")`; bg.classList.add('on'); }
+    H.classList.remove('swap');
+  }, 140);
 }
-async function doSearch(q) {
-  if (!q) return home();
-  Q.value = q; R.innerHTML = `<p class="hint" style="padding:0 5vw">Searching “${esc(q)}”…</p>`;
-  try {
-    const items = await search(q);
-    rowsData = []; for (let i = 0; i < items.length; i += 10) rowsData.push({ title: i ? '' : `Results for “${q}”`, items: items.slice(i, i + 10) });
-    rowsData.length ? render() : showMsg('No results', `Nothing found for “${q}”.`);
-  } catch (e) { showMsg('Search failed', String(e)); }
-}
-function showMsg(title, text, btns = [['Try again', 'home()'], ['Back to Lumen', "location.href='/'"]]) {
-  rowsData = [];
-  R.innerHTML = `<div class="msg"><h2>${esc(title)}</h2><p>${text}</p><div class="opts">${btns.map(([l, js]) => `<button class="opt" onclick="${js}">${l}</button>`).join('')}</div></div>`;
-  R.querySelector('button')?.focus();
-}
-
 function focusCard(c) {
+  if (!c) return;
   c.focus({ preventScroll: true });
-  const track = c.parentElement, view = innerWidth, pad = view * .05;
+  const track = c.parentElement, view = innerWidth, pad = view * .045;
   const x = Math.min(Math.max(0, track.scrollWidth - view), Math.max(0, c.offsetLeft + c.offsetWidth - view + pad * 2));
   track.style.transform = `translateX(${-x}px)`;
-  const sec = track.parentElement;                       // keep the focused row near the top
-  R.style.transform = `translateY(${-Math.max(0, sec.offsetTop - 10)}px)`;
+  R.style.transform = `translateY(${-track.parentElement.offsetTop}px)`;   // focused row sits at the top
+  hero(item(c));
+}
+const item = c => rowsData[c.dataset.r]?.items[c.dataset.i];
+function showMsg(title, text, btns = [['Try again', () => go(tab)], ['Back to Lumen', () => location.href = '/']], focus = true) {
+  rowsData = []; hero(null);
+  R.style.transform = 'none';
+  R.innerHTML = `<div class="msg"><h2>${esc(title)}</h2><p>${text}</p><div class="opts">${btns.map((b, i) => `<button class="opt" data-b="${i}">${esc(b[0])}</button>`).join('')}</div></div>`;
+  R.querySelectorAll('.msg .opt').forEach(b => b.onclick = () => btns[b.dataset.b][1]());
+  if (focus) R.querySelector('.msg .opt')?.focus();
+}
+
+/* ---------- tabs ---------- */
+async function go(t, focus = false) {
+  tab = t; const id = ++loadId;
+  $$('[data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  R.style.transform = 'none'; R.innerHTML = spin('Loading…'); hero(null);
+  const done = (rows, empty) => { if (id !== loadId) return; if (!render(rows, focus)) empty(); };
+  const pick = (res, i) => res[i]?.status === 'fulfilled' ? res[i].value : [];
+  try {
+    if (t === 'home') {
+      const jobs = [suggested(), chart(0), token ? subsList().then(subsFeed) : [], token ? liked() : [], ...CATS.map(([, c]) => chart(c))];
+      const res = await Promise.allSettled(jobs);
+      done([
+        { title: 'Continue watching', items: hist.filter(unfinished).slice(0, 20).map(fromHist) },
+        { title: 'Suggested for you', items: pick(res, 0) },
+        { title: 'Latest from your subscriptions', items: pick(res, 2) },
+        { title: 'Trending', items: pick(res, 1) },
+        { title: 'Recently watched', items: hist.slice(0, 30).map(fromHist) },
+        { title: 'Liked videos', items: pick(res, 3) },
+        ...CATS.map(([title], i) => ({ title, items: pick(res, 4 + i) }))
+      ], () => showMsg('Could not load YouTube', esc(String(res[1].reason || 'Check your API key or sign in again.'))));
+    } else if (t === 'subs') {
+      if (!token) return showMsg('Your subscriptions', 'Sign in with your Google account to see videos from the channels you follow.',
+        [['Sign in', signIn], ['Home', () => go('home', true)]], focus);
+      const subs = await subsList();
+      const res = await Promise.allSettled([subsFeed(subs), ...subs.slice(0, 12).map(c => uploads(c.id, 12).then(a => videos(a.map(x => x.id))))]);
+      done([{ title: 'Latest', items: pick(res, 0) }, ...subs.slice(0, 12).map((c, i) => ({ title: c.title, av: c.thumb, items: pick(res, i + 1) }))],
+        () => showMsg('No subscriptions yet', 'Subscribe to channels on YouTube and they will show up here.', [['Home', () => go('home', true)]], focus));
+    } else if (t === 'library') {
+      let pls = [];
+      const res = await Promise.allSettled([token ? liked() : [], token ? yt('playlists?part=snippet&mine=true&maxResults=8') : []]);
+      if (res[1].status === 'fulfilled') {
+        const lists = res[1].value;
+        const its = await Promise.allSettled(lists.map(p => yt(`playlistItems?part=contentDetails&maxResults=25&playlistId=${p.id}`).then(a => videos(a.map(x => x.contentDetails.videoId)))));
+        pls = lists.map((p, i) => ({ title: p.snippet.title, note: 'Playlist', items: pick(its, i) }));
+      }
+      done([
+        { title: 'Continue watching', items: hist.filter(unfinished).slice(0, 20).map(fromHist) },
+        { title: 'History', note: 'on this TV', items: hist.slice(0, 50).map(fromHist) },
+        { title: 'Liked videos', items: pick(res, 0) }, ...pls
+      ], () => showMsg('Your library is empty', token ? 'Videos you watch on this TV will show up here.' : 'Videos you watch will show up here. Sign in to also see your liked videos and playlists.',
+        token ? [['Home', () => go('home', true)]] : [['Sign in', signIn], ['Home', () => go('home', true)]], focus));
+    } else if (t === 'search') {
+      const q = Q.value.trim(); if (!q) return go('home', focus);
+      R.innerHTML = spin(`Searching “${q}”…`);
+      const ids = (await yt(`search?part=id&type=video&maxResults=40&q=${encodeURIComponent(q)}`)).map(v => v.id.videoId);
+      const items = await videos(ids), rows = [];
+      for (let i = 0; i < items.length; i += 10) rows.push({ title: i ? '' : `Results for “${q}”`, items: items.slice(i, i + 10) });
+      done(rows, () => showMsg('No results', `Nothing found for “${esc(q)}”.`, [['Home', () => go('home', true)]]));
+    }
+  } catch (e) { if (id === loadId) showMsg('Something went wrong', esc(String(e))); }
+}
+function doSearch(q) { Q.value = q; $$('[data-tab]').forEach(b => b.classList.remove('on')); go('search', true); }
+
+/* ---------- account ---------- */
+async function loadMe() {
+  me = null;
+  if (token) try { const c = (await yt('channels?part=snippet&mine=true'))[0]; me = c ? { name: c.snippet.title, av: c.snippet.thumbnails?.default?.url } : { name: 'Signed in' }; } catch { me = { name: 'Signed in' }; }
+  $('#acct').innerHTML = me ? `${me.av ? `<img src="${esc(me.av)}" alt="">` : ''}${esc(me.name)}` : 'Sign in';
+}
+function ov(title, html, btns) {
+  $('#ovBox').innerHTML = `<h2>${esc(title)}</h2>${html}<div class="opts">${btns.map((b, i) => `<button class="opt" data-b="${i}">${esc(b[0])}</button>`).join('')}</div>`;
+  $('#ovBox').querySelectorAll('.opt').forEach(b => b.onclick = () => btns[b.dataset.b][1]());
+  $('#ov').classList.add('on'); $('#ovBox .opt').focus();
+}
+function closeOv() { $('#ov').classList.remove('on'); $('#ov').dataset.kind = ''; $('#acct').focus(); }
+const ovOn = () => $('#ov').classList.contains('on');
+function showCode(code, url) {
+  ov('Sign in to YouTube', `<p>On your phone, go to <b>${esc((url || 'google.com/device').replace(/^https?:\/\/(www\.)?/, ''))}</b> and enter this code:</p><div class="code">${esc(code)}</div><p class="hint">Or open the Lumen phone remote → Sign in → YouTube.</p>`, [['Cancel', closeOv]]);
+  $('#ov').dataset.kind = 'code';
+}
+async function signIn() {
+  const st = await fetch('/api/yt/status').then(r => r.json()).catch(() => ({}));
+  if (!st.configured) return ov('Set up sign-in first', '<p>On the Lumen phone remote, open the <b>Sign in</b> tab, choose <b>YouTube</b> and follow the one-time setup. It takes about 3 minutes.</p>', [['OK', closeOv]]);
+  if (st.pending?.code) return showCode(st.pending.code, st.pending.url);
+  const r = await fetch('/api/yt/login', { method: 'POST' }).then(r => r.json()).catch(() => ({ msg: 'Lumen is not responding.' }));
+  r.ok ? showCode(r.code, r.url) : ov('Could not start sign-in', `<p>${esc(r.msg)}</p>`, [['OK', closeOv]]);
+}
+$('#acct').onclick = () => me ? ov(`Signed in as ${me.name}`, '<p>Your subscriptions, liked videos and playlists show in Lumen.</p>',
+  [['Close', closeOv], ['Sign out', async () => { await fetch('/api/yt/logout', { method: 'POST' }); closeOv(); }]]) : signIn();
+async function onSigned() {
+  if ($('#ov').dataset.kind === 'code') closeOv();
+  cache.clear(); await getToken(true); await loadMe(); go(tab === 'search' ? 'home' : tab);
 }
 
 /* ---------- player (YouTube IFrame API, controlled by the remote) ---------- */
 function loadApi() {
   return apiReady ||= new Promise(res => { window.onYouTubeIframeAPIReady = res; const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; document.head.append(s); });
 }
+function saveHist(v, pos, len) {
+  const h = { id: v.id, title: v.title, channel: v.channel, channelId: v.channelId, thumb: v.thumb, dur: v.dur, cat: v.cat, pos: Math.floor(pos || 0), len: Math.floor(len || v.dur || 0) };
+  hist = [{ ...h, ts: Date.now() / 1000 }, ...hist.filter(x => x.id !== v.id)];
+  fetch('/api/yt/history', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(h) }).catch(() => { });
+}
+let saveI;
 async function play(card) {
-  cur = card; const v = rowsData[card.dataset.r].items[card.dataset.i];
-  $('#oT').textContent = v.snippet.title; $('#oC').textContent = v.snippet.channelTitle;
-  $('#player').classList.add('on'); osd();
+  cur = card; const v = item(card); if (!v) return;
+  const old = hist.find(h => h.id === v.id), start = old && unfinished(old) ? old.pos : 0;
+  $('#oT').textContent = v.title; $('#oC').textContent = v.channel;
+  $('#player').classList.add('on'); osd(); saveHist(v, start, v.dur);
   await loadApi();
-  if (yp) { yp.loadVideoById(v.id); return; }
-  yp = new YT.Player('yp', { videoId: v.id, playerVars: { autoplay: 1, controls: 0, rel: 0, iv_load_policy: 3, fs: 0, disablekb: 1, playsinline: 1, modestbranding: 1 },
-    events: { onStateChange: e => { if (e.data === YT.PlayerState.ENDED) next(); } } });
+  clearInterval(saveI); saveI = setInterval(() => yp?.getCurrentTime && saveHist(v, yp.getCurrentTime(), yp.getDuration()), 15000);
+  if (yp) { yp.loadVideoById({ videoId: v.id, startSeconds: start }); return; }
+  yp = new YT.Player('yp', { videoId: v.id, playerVars: { autoplay: 1, controls: 0, rel: 0, iv_load_policy: 3, fs: 0, disablekb: 1, playsinline: 1, start: Math.floor(start) },
+    events: { onStateChange: e => { if (e.data === YT.PlayerState.ENDED) next(); },
+              onError: () => { flash('This video can only play on youtube.com'); setTimeout(next, 2500); } } });
 }
 function next() {   // auto-play the next video in the same row
-  const n = cur?.nextElementSibling; if (n) { focusCard(n); play(n); } else close();
+  const v = cur && item(cur); if (v && yp?.getDuration) saveHist(v, yp.getDuration(), yp.getDuration());
+  const n = cur?.nextElementSibling; if (n && playing()) { focusCard(n); play(n); } else close();
 }
-function close() { yp?.stopVideo(); $('#player').classList.remove('on'); $('#osd').classList.remove('on'); cur && focusCard(cur); }
+function close() {
+  const v = cur && item(cur); if (v && yp?.getCurrentTime) saveHist(v, yp.getCurrentTime(), yp.getDuration());
+  clearInterval(saveI); yp?.stopVideo?.(); $('#player').classList.remove('on'); $('#osd').classList.remove('on'); cur && focusCard(cur);
+}
 const playing = () => $('#player').classList.contains('on');
 let osdT, osdI;
 function osd() {
@@ -142,49 +349,96 @@ function osd() {
   upd(); osdI = setInterval(upd, 500);
   osdT = setTimeout(() => { $('#osd').classList.remove('on'); clearInterval(osdI); }, 3500);
 }
-const fmt = s => { s = Math.floor(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = String(s % 60).padStart(2, '0'); return h ? `${h}:${String(m).padStart(2, '0')}:${x}` : `${m}:${x}`; };
-function flash(sym) { const s = $('#st'); s.textContent = sym; s.classList.add('on'); setTimeout(() => s.classList.remove('on'), 600); }
+let flT;
+function flash(sym) { const s = $('#st'); s.textContent = sym; s.classList.add('on'); clearTimeout(flT); flT = setTimeout(() => s.classList.remove('on'), sym.length > 4 ? 2200 : 600); }
 function toggle() { if (!yp?.getPlayerState) return; if (yp.getPlayerState() === 1) { yp.pauseVideo(); flash('❚❚'); } else { yp.playVideo(); flash('▶'); } osd(); }
 function seek(d) { if (!yp?.getCurrentTime) return; yp.seekTo(Math.max(0, yp.getCurrentTime() + d), true); flash(d > 0 ? '+10' : '−10'); osd(); }
 
 /* ---------- remote keys ---------- */
+const barItems = () => $$('#bar .bi');
+function moveIn(list, a, d) { const i = list.indexOf(a), t = list[i + d]; if (t) t.focus(); return !!t; }
 addEventListener('keydown', e => {
-  const k = e.key, back = k === 'Escape' || k === 'BrowserBack' || (e.altKey && k === 'ArrowLeft') || (k === 'Backspace' && document.activeElement !== Q);
+  const k = e.key, a = document.activeElement;
+  const back = k === 'Escape' || k === 'BrowserBack' || (e.altKey && k === 'ArrowLeft') || (k === 'Backspace' && a !== Q);
   if (playing()) {
     e.preventDefault();
     if (back) close(); else if (k === 'Enter' || k === ' ') toggle();
     else if (k === 'ArrowRight') seek(10); else if (k === 'ArrowLeft') seek(-10); else osd();
     return;
   }
-  if (back) { e.preventDefault(); return document.activeElement === Q ? R.querySelector('.card')?.focus() : (location.href = '/'); }
-  const a = document.activeElement;
-  if (a === Q) { if (k === 'ArrowDown') { e.preventDefault(); const c = R.querySelector('.card'); c && focusCard(c); } else if (k === 'Enter') { e.preventDefault(); doSearch(Q.value.trim()); } return; }
-  if (!a?.classList.contains('card')) { if (k.startsWith('Arrow')) { const c = R.querySelector('.card,.msg button'); c?.classList.contains('card') ? focusCard(c) : c?.focus(); } return; }
+  if (ovOn()) {
+    const btns = $$('#ovBox .opt');
+    if (back) { e.preventDefault(); closeOv(); }
+    else if (k === 'ArrowLeft' || k === 'ArrowRight') { e.preventDefault(); moveIn(btns, a, k === 'ArrowLeft' ? -1 : 1) || btns[0]?.focus(); }
+    else if (k.startsWith('Arrow')) e.preventDefault();
+    return;
+  }
+  const inBar = a?.closest('#bar'), inMsg = a?.closest('.msg');
+  if (back) {
+    e.preventDefault();
+    if (!inBar) return (barItems().find(b => b.classList.contains('on')) || Q).focus();
+    return tab === 'home' ? (location.href = '/') : go('home');
+  }
+  if (inBar) {
+    if (a === Q) {
+      if (k === 'Enter') { e.preventDefault(); return Q.value.trim() ? doSearch(Q.value.trim()) : null; }
+      const atEnd = Q.selectionStart === Q.value.length;
+      if (k === 'ArrowRight' && !atEnd) return;
+      if (k === 'ArrowLeft') return;
+    }
+    if (k === 'ArrowLeft' || k === 'ArrowRight') { e.preventDefault(); moveIn(barItems(), a, k === 'ArrowLeft' ? -1 : 1); }
+    else if (k === 'ArrowDown') { e.preventDefault(); const c = R.querySelector('.card'); c ? focusCard(c) : R.querySelector('.msg .opt')?.focus(); }
+    else if (k === 'Enter' && a.dataset.tab) { e.preventDefault(); a.dataset.tab === tab ? R.querySelector('.card') && focusCard(R.querySelector('.card')) : go(a.dataset.tab); }
+    return;
+  }
+  if (inMsg) {
+    if (k === 'ArrowLeft' || k === 'ArrowRight') { e.preventDefault(); moveIn($$('.msg .opt'), a, k === 'ArrowLeft' ? -1 : 1); }
+    else if (k === 'ArrowUp') { e.preventDefault(); (barItems().find(b => b.classList.contains('on')) || Q).focus(); }
+    return;
+  }
+  if (!a?.classList.contains('card')) { if (k.startsWith('Arrow')) { e.preventDefault(); const c = R.querySelector('.card'); c ? focusCard(c) : (R.querySelector('.msg .opt') || Q).focus(); } return; }
   const r = +a.dataset.r, i = +a.dataset.i, rows = R.querySelectorAll('.track');
   let t = null;
   if (k === 'ArrowLeft') t = a.previousElementSibling; else if (k === 'ArrowRight') t = a.nextElementSibling;
-  else if (k === 'ArrowUp') { if (r === 0) { e.preventDefault(); Q.focus(); R.style.transform = 'none'; return; } const row = rows[r - 1].children; t = row[Math.min(i, row.length - 1)]; }
-  else if (k === 'ArrowDown' && rows[r + 1]) { const row = rows[r + 1].children; t = row[Math.min(i, row.length - 1)]; }
-  if (t) { e.preventDefault(); focusCard(t); }
+  else if (k === 'ArrowUp') {
+    if (r === 0) { e.preventDefault(); return (barItems().find(b => b.classList.contains('on')) || Q).focus(); }
+    const row = rows[r - 1].children; t = row[Math.min(i, row.length - 1)];
+  } else if (k === 'ArrowDown' && rows[r + 1]) { const row = rows[r + 1].children; t = row[Math.min(i, row.length - 1)]; }
+  if (k.startsWith('Arrow')) e.preventDefault();
+  if (t) focusCard(t);
 });
 R.addEventListener('click', e => { const c = e.target.closest('.card'); if (c) { focusCard(c); play(c); } });
+$$('[data-tab]').forEach(b => b.addEventListener('click', () => go(b.dataset.tab)));
 $('#player').addEventListener('click', toggle);
 $('#player').addEventListener('mousemove', osd);
 
-/* ---------- phone search (typed or voice) ---------- */
+/* ---------- messages from the phone remote ---------- */
 (function sock() {
   const ws = new WebSocket(`ws://${location.host}/ws?tv=1`);
-  ws.onmessage = e => { const m = JSON.parse(e.data); if (m.t === 'search') { if (playing()) close(); doSearch(m.q); } if (m.t === 'vol') window.lumenVolume?.(m.v, m.muted); };
+  ws.onmessage = e => {
+    const m = JSON.parse(e.data);
+    if (m.t === 'search') { if (playing()) close(); if (ovOn()) closeOv(); doSearch(m.q); }
+    if (m.t === 'vol') window.lumenVolume?.(m.v, m.muted);
+    if (m.t === 'open' && m.url && !m.url.startsWith('/s/apps/youtube.html')) { if (playing()) close(); location.href = m.url; }
+    if (m.t === 'ytcode') { if (m.code) { if (playing()) close(); showCode(m.code, m.url); } else if ($('#ov').dataset.kind === 'code') closeOv(); }
+    if (m.t === 'ytsigned') onSigned();
+  };
   ws.onclose = () => setTimeout(sock, 2000);
 })();
 
 (async () => {
-  const s = await fetch('/api/settings').then(r => r.json()).catch(() => ({}));
-  key = s.ytKey || ''; region = s.region || 'IN';
-  if (!key) return showMsg('Add your YouTube API key', 'Open the phone remote → More → YouTube API key, paste your key and save.<br>It is free: see the Lumen README for the steps.',
-    [['Open classic YouTube', "location.href='https://www.youtube.com'"], ['Back to Lumen', "location.href='/'"]]);
-  const q = new URLSearchParams(location.search).get('q');
-  q ? doSearch(q) : home();
+  const [s, , h, st] = await Promise.all([fetch('/api/settings').then(r => r.json()).catch(() => ({})), getToken(),
+    fetch('/api/yt/history').then(r => r.json()).catch(() => []), fetch('/api/yt/status').then(r => r.json()).catch(() => ({}))]);
+  key = s.ytKey || ''; region = s.region || 'IN'; hist = Array.isArray(h) ? h : [];
+  if (!key && !token) {
+    showMsg('Set up YouTube', 'Sign in with your Google account (phone remote → <b>Sign in</b> → YouTube),<br>or add a free YouTube API key (phone remote → <b>More</b>). The Lumen README has the steps.',
+      [['Sign in', signIn], ['Open classic YouTube', () => location.href = 'https://www.youtube.com'], ['Back to Lumen', () => location.href = '/']]);
+  } else {
+    loadMe();
+    const q = new URLSearchParams(location.search).get('q');
+    q ? doSearch(q) : go('home', true);
+  }
+  if (st.pending?.code) showCode(st.pending.code, st.pending.url);
 })();
 </script>
 </body></html>

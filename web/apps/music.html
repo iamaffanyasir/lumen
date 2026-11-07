@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Music · Lumen</title><link rel="stylesheet" href="/s/style.css">
+<style>
+:root{--m:#ff2d75;--mbg:#0c0710}
+html{background:var(--mbg)}
+.wall{--g:radial-gradient(60% 60% at 100% 0%,#4a0f33 0,transparent 70%),radial-gradient(50% 60% at 0% 100%,#24103f 0,transparent 70%),var(--mbg)}
+.app{position:relative;z-index:1;height:100%;display:grid;grid-template-columns:22vw 1fr 31vw;grid-template-rows:auto 1fr;gap:0 2.4vw;padding:4vh 4vw 4vh}
+.bar{grid-column:1/-1;display:flex;align-items:center;gap:1rem;margin-bottom:3vh}
+.logo{display:flex;align-items:center;gap:.55em;font-weight:800;font-size:1.5rem}
+.logo i{width:1.4em;height:1.4em;background:var(--m);-webkit-mask:url(/s/icons/music.svg) center/contain no-repeat;mask:url(/s/icons/music.svg) center/contain no-repeat}
+.bar span{color:var(--mute)}
+.col{min-height:0;display:flex;flex-direction:column}
+.col h3{font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);font-weight:600;margin:0 0 1.2vh .4rem}
+.list{flex:1;min-height:0;overflow-y:auto;scrollbar-width:none;padding:4px}
+.list::-webkit-scrollbar{display:none}
+.it{width:100%;display:flex;align-items:center;gap:1rem;text-align:left;padding:.75rem 1rem;border-radius:14px;border:2px solid transparent;margin-bottom:.35rem;transition:transform .15s var(--ease),background .15s}
+.it:focus{border-color:#fff;background:rgba(255,255,255,.08);transform:scale(1.015)}
+.it.on{background:rgba(255,45,117,.16)}
+.it .n{flex:1;min-width:0}
+.it b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.it small{display:block;color:var(--mute);font-size:.85rem;margin-top:.15rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.it .cnt{color:var(--mute);font-size:.85rem;font-variant-numeric:tabular-nums}
+.it .no{width:1.8rem;text-align:center;color:var(--mute);font-variant-numeric:tabular-nums;flex:0 0 auto}
+.it .fa{width:2.6rem;height:2.6rem;border-radius:10px;flex:0 0 auto;background:var(--art) center/cover;display:grid;place-items:center;font-weight:800}
+.eq{display:none;gap:3px;align-items:flex-end;height:1rem;width:1.8rem;justify-content:center;flex:0 0 auto}
+.it.on .eq{display:flex}.it.on .no{display:none}
+.eq i{width:3px;background:var(--m);border-radius:2px;animation:eq .9s ease-in-out infinite}
+.eq i:nth-child(2){animation-delay:-.3s}.eq i:nth-child(3){animation-delay:-.6s}
+.paused .eq i{animation-play-state:paused}
+@keyframes eq{0%,100%{height:30%}50%{height:100%}}
+/* now playing */
+.np{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:0}
+.art{width:min(23vw,44vh);aspect-ratio:1;border-radius:24px;background:var(--art,#241830) center/cover;box-shadow:0 30px 70px -20px rgba(255,45,117,.45);display:grid;place-items:center;font-size:5rem;font-weight:800;color:rgba(255,255,255,.85);transition:transform .4s var(--ease)}
+.paused .art{transform:scale(.94)}
+.np h2{margin-top:3.4vh;font-size:1.55rem;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.np p{color:var(--mute);margin-top:.4rem;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prog{width:100%;margin-top:3vh}
+.pb{height:6px;border-radius:9px;background:rgba(255,255,255,.15);overflow:hidden}
+.pb i{display:block;height:100%;width:100%;background:var(--m);transform-origin:left;transform:scaleX(0)}
+.pt{display:flex;justify-content:space-between;margin-top:.55rem;color:var(--mute);font-size:.85rem;font-variant-numeric:tabular-nums}
+.ctl{display:flex;align-items:center;justify-content:center;gap:1.1rem;margin-top:2.4vh}
+.cb{width:3.4rem;height:3.4rem;border-radius:50%;display:grid;place-items:center;border:2px solid transparent;color:#ddd;transition:transform .15s var(--ease)}
+.cb svg{width:1.45rem;height:1.45rem}
+.cb.big{width:4.6rem;height:4.6rem;background:#fff;color:#111}.cb.big svg{width:1.9rem;height:1.9rem}
+.cb.act{color:var(--m)}
+.cb:focus{border-color:#fff;transform:scale(1.1)}
+.empty{grid-column:1/-1;align-self:center;text-align:center;max-width:720px;margin:0 auto}
+.empty h2{font-size:1.7rem}.empty p{color:var(--mute);line-height:1.7;margin:1rem 0 2rem}
+.empty code{background:rgba(255,255,255,.08);padding:.15em .5em;border-radius:6px;color:#fff}
+.empty .opt:focus{background:#fff;color:#111}
+</style></head>
+<body>
+<div class="wall"></div>
+<div class="app" id="app">
+  <div class="bar"><div class="logo"><i></i>Music</div><span id="count"></span></div>
+</div>
+<audio id="au" preload="auto"></audio>
+<script src="/s/osd.js"></script>
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)], au = $('#au');
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const store = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { } } };
+const P = d => `<svg viewBox="0 0 24 24" fill="currentColor">${d}</svg>`;
+const IC = { play: P('<path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/>'), pause: P('<rect x="6" y="5" width="4.5" height="14" rx="1.2"/><rect x="13.5" y="5" width="4.5" height="14" rx="1.2"/>'),
+  prev: P('<path d="M6 5h2.5v14H6zM20 6.2v11.6a1 1 0 0 1-1.55.83L10 13a1.2 1.2 0 0 1 0-2l8.45-5.63A1 1 0 0 1 20 6.2z"/>'), next: P('<path d="M15.5 5H18v14h-2.5zM4 6.2v11.6a1 1 0 0 0 1.55.83L14 13a1.2 1.2 0 0 0 0-2L5.55 5.37A1 1 0 0 0 4 6.2z"/>'),
+  shuffle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>',
+  repeat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg>' };
+const hues = s => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
+const art = (name, cover) => cover ? `url("/media/music/${enc(cover)}")` : `linear-gradient(135deg,hsl(${hues(name)} 70% 45%),hsl(${(hues(name) + 60) % 360} 70% 25%))`;
+const enc = p => p.split('/').map(encodeURIComponent).join('/');
+const fmt = s => { s = Math.floor(s || 0); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+function meta(f) {   // "Artist - Title.mp3" → artist and title; otherwise use the folder as the artist
+  const m = f.name.replace(/^\d{1,3}[\s.\-_]+/, '').split(/\s+[-–]\s+/);
+  return m.length > 1 ? { title: m.slice(1).join(' - '), artist: m[0] } : { title: m[0], artist: f.folder };
+}
+
+let files = [], folders = [], fi = 0, shown = [], queue = [], qi = -1, shuffle = store.get('mu.shuffle', false), repeat = store.get('mu.repeat', false);
+
+function build() {
+  const app = $('#app');
+  if (!files.length) {
+    app.insertAdjacentHTML('beforeend', `<div class="empty"><h2>No music yet</h2><p>Copy songs into <code>${esc(roots[0] || '~/Music')}</code> on the Pi, plug in a USB drive,<br>or upload from your phone: phone remote → More → Add music.</p><div class="opts" style="display:flex;gap:.8rem;justify-content:center"><button class="opt" onclick="location.reload()">Refresh</button><button class="opt" onclick="location.href='/'">Back to Lumen</button></div></div>`);
+    return $('.empty .opt').focus();
+  }
+  const by = {}; files.forEach(f => (by[f.folder] ||= []).push(f));
+  folders = [{ name: 'All songs', items: files, cover: '' }, ...Object.keys(by).sort().map(k => ({ name: k, items: by[k], cover: by[k].find(f => f.cover)?.cover || '' }))];
+  if (folders.length === 2) folders.shift();   // only one folder: no need for "All songs"
+  $('#count').textContent = `${files.length} song${files.length > 1 ? 's' : ''}`;
+  app.insertAdjacentHTML('beforeend', `
+    <div class="col"><h3>Library</h3><div class="list" id="folders">${folders.map((f, i) => `<button class="it fo" data-i="${i}"><span class="fa" style="--art:${art(f.name, f.cover)}">${f.cover ? '' : esc(f.name[0].toUpperCase())}</span><span class="n"><b>${esc(f.name)}</b></span><span class="cnt">${f.items.length}</span></button>`).join('')}</div></div>
+    <div class="col"><h3 id="ftitle"></h3><div class="list" id="tracks"></div></div>
+    <div class="np paused" id="np"><div class="art" id="art"></div><h2 id="nT">Pick a song</h2><p id="nA">Use the remote to choose from your library</p>
+      <div class="prog"><div class="pb"><i id="pB"></i></div><div class="pt"><span id="pN">0:00</span><span id="pD">0:00</span></div></div>
+      <div class="ctl" id="ctl"><button class="cb" data-c="shuffle">${IC.shuffle}</button><button class="cb" data-c="prev">${IC.prev}</button><button class="cb big" data-c="toggle">${IC.play}</button><button class="cb" data-c="next">${IC.next}</button><button class="cb" data-c="repeat">${IC.repeat}</button></div></div>`);
+  $$('.fo').forEach(b => { b.onfocus = () => showFolder(+b.dataset.i); b.onclick = () => { showFolder(+b.dataset.i); $('#tracks .it')?.focus(); }; });
+  $$('.cb').forEach(b => b.onclick = () => ctl(b.dataset.c));
+  modes(); showFolder(0); $('.fo').focus();
+}
+function showFolder(i) {
+  if (fi === i && $('#tracks').childElementCount) return;
+  fi = i; shown = folders[i].items; $('#ftitle').textContent = folders[i].name;
+  $('#tracks').innerHTML = shown.map((f, j) => { const m = meta(f);
+    return `<button class="it tr" data-j="${j}"><span class="no">${j + 1}</span><span class="eq"><i></i><i></i><i></i></span><span class="n"><b>${esc(m.title)}</b><small>${esc(m.artist)}</small></span></button>`; }).join('');
+  $$('.tr').forEach(b => b.onclick = () => start(shown, +b.dataset.j));
+  mark(); $$('.fo').forEach(b => b.classList.toggle('on', +b.dataset.i === i));
+}
+function mark() { const p = queue[qi]?.path; $$('.tr').forEach(b => b.classList.toggle('on', shown[b.dataset.j]?.path === p)); }
+function start(list, j) {
+  queue = list.slice();
+  if (shuffle) { const first = queue.splice(j, 1)[0]; for (let i = queue.length - 1; i > 0; i--) { const r = Math.floor(Math.random() * (i + 1)); [queue[i], queue[r]] = [queue[r], queue[i]]; } queue.unshift(first); j = 0; }
+  load(j);
+}
+function load(j) {
+  if (!queue.length) return;
+  qi = (j + queue.length) % queue.length; const f = queue[qi], m = meta(f);
+  au.src = '/media/music/' + enc(f.path); au.play().catch(() => { });
+  $('#nT').textContent = m.title; $('#nA').textContent = m.artist;
+  const a = $('#art'); a.style.setProperty('--art', art(f.folder + f.name, f.cover)); a.textContent = f.cover ? '' : m.title[0]?.toUpperCase() || '♪';
+  mark();
+  if ('mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title: m.title, artist: m.artist, album: f.folder });
+}
+function ctl(c) {
+  if (c === 'toggle') { if (!au.src) return $('#tracks .it') && start(shown, 0); au.paused ? au.play() : au.pause(); }
+  else if (c === 'next') load(qi + 1);
+  else if (c === 'prev') au.currentTime > 4 ? au.currentTime = 0 : load(qi - 1);
+  else if (c === 'shuffle') { shuffle = !shuffle; store.set('mu.shuffle', shuffle); modes(); }
+  else if (c === 'repeat') { repeat = !repeat; store.set('mu.repeat', repeat); modes(); }
+}
+function modes() { $('[data-c=shuffle]')?.classList.toggle('act', shuffle); $('[data-c=repeat]')?.classList.toggle('act', repeat); }
+au.onplay = au.onpause = () => { $('#np')?.classList.toggle('paused', au.paused); document.body.classList.toggle('paused', au.paused); $('[data-c=toggle]').innerHTML = au.paused ? IC.play : IC.pause; };
+au.ontimeupdate = () => { const d = au.duration || 0; $('#pB').style.transform = `scaleX(${d ? au.currentTime / d : 0})`; $('#pN').textContent = fmt(au.currentTime); $('#pD').textContent = fmt(d); };
+au.onended = () => repeat ? (au.currentTime = 0, au.play()) : qi < queue.length - 1 ? load(qi + 1) : null;
+au.onerror = () => { if (queue.length > 1) setTimeout(() => load(qi + 1), 800); };
+if ('mediaSession' in navigator) for (const [a, c] of [['play', 'toggle'], ['pause', 'toggle'], ['nexttrack', 'next'], ['previoustrack', 'prev']]) navigator.mediaSession.setActionHandler(a, () => ctl(c));
+
+/* remote keys: ↑↓ move in a list, ←→ move between library, songs and the player */
+addEventListener('keydown', e => {
+  const k = e.key, a = document.activeElement;
+  const back = k === 'Escape' || k === 'BrowserBack' || k === 'Backspace' || (e.altKey && k === 'ArrowLeft');
+  if (k === 'MediaPlayPause' || k === ' ') { e.preventDefault(); return ctl('toggle'); }
+  if (k === 'MediaTrackNext') return ctl('next');
+  if (k === 'MediaTrackPrevious') return ctl('prev');
+  if (!files.length) { if (back) location.href = '/'; return; }
+  const zone = a?.classList.contains('fo') ? 'f' : a?.classList.contains('tr') ? 't' : a?.classList.contains('cb') ? 'c' : '';
+  if (back) { e.preventDefault(); return zone === 'f' ? (location.href = '/') : $('.fo.on')?.focus(); }
+  if (!k.startsWith('Arrow')) return;
+  e.preventDefault();
+  if (!zone) return $('.fo')?.focus();
+  const sib = d => { const t = d > 0 ? a.nextElementSibling : a.previousElementSibling; if (t) { t.focus(); t.scrollIntoView({ block: 'nearest' }); } };
+  if (k === 'ArrowUp' || k === 'ArrowDown') return zone !== 'c' && sib(k === 'ArrowDown' ? 1 : -1);
+  const right = k === 'ArrowRight';
+  if (zone === 'f') right && ($('.tr.on') || $('.tr'))?.focus();
+  else if (zone === 't') right ? $('[data-c=toggle]').focus() : $('.fo.on').focus();
+  else if (zone === 'c') { const t = right ? a.nextElementSibling : a.previousElementSibling; t ? t.focus() : !right && ($('.tr.on') || $('.tr'))?.focus(); }
+});
+
+let roots = [];
+(function sock() {
+  const ws = new WebSocket(`ws://${location.host}/ws?tv=1`);
+  ws.onmessage = e => { const m = JSON.parse(e.data);
+    if (m.t === 'vol') window.lumenVolume?.(m.v, m.muted);
+    if (m.t === 'open' && m.url) location.href = m.url;
+    if (m.t === 'search') location.href = '/s/apps/youtube.html?q=' + encodeURIComponent(m.q); };
+  ws.onclose = () => setTimeout(sock, 2000);
+})();
+fetch('/api/media/music').then(r => r.json()).then(j => { files = j.files || []; roots = j.roots || []; build(); })
+  .catch(() => { files = []; build(); });
+</script>
+</body></html>

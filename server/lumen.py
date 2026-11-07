@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Lumen TV backend: serves the launcher, the phone remote, and system APIs."""
-import asyncio, json, os, pwd, re, socket, subprocess
+import asyncio, json, mimetypes, os, pwd, re, socket, subprocess, time
 from pathlib import Path
 from aiohttp import web
 
@@ -13,7 +13,8 @@ USER = os.environ.get("LUMEN_USER", "pi")
 PORT = int(os.environ.get("LUMEN_PORT", "80"))
 IMG = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 DEFAULTS = {"v": 2, "wallpaper": "none", "saverOn": True, "screensaver": "clock", "saverMinutes": 5, "clock12": True,
-            "city": "Delhi", "country": "India", "school": 1, "method": 1, "ytKey": "", "region": "IN"}
+            "city": "Delhi", "country": "India", "school": 1, "method": 1, "ytKey": "", "region": "IN",
+            "ytClientId": "", "ytClientSecret": ""}
 
 
 def load_settings():
@@ -368,6 +369,246 @@ async def no_cache(req, handler):
 TV_SOCKETS = set()   # Lumen pages open on the TV; they receive voice/text searches from the phone
 
 
+async def tv_send(m):
+    for tv in list(TV_SOCKETS):
+        try: await tv.send_json(m)
+        except Exception: TV_SOCKETS.discard(tv)
+
+
+async def open_on_tv(url):
+    """Show a page on the TV. If the TV is on another website, go back to Lumen first (Alt+Home)."""
+    if not TV_SOCKETS and KBD:
+        tap(E.KEY_HOME, [E.KEY_LEFTALT])
+        for _ in range(40):
+            await asyncio.sleep(0.25)
+            if TV_SOCKETS: break
+    if not TV_SOCKETS: return False
+    await tv_send({"t": "open", "url": url})
+    return True
+
+
+def find_app(name):
+    try: apps = json.loads((WEB / "apps.json").read_text(encoding="utf-8"))
+    except Exception: apps = []
+    return next((a for a in apps if a.get("name") == name), None)
+
+
+# ---------- YouTube sign-in (Google's TV sign-in: you enter a code on your phone) ----------
+YT_TOKEN = DATA / "yt_token.json"
+YT = {"pending": None, "error": "", "task": None, "access": "", "exp": 0}
+G_TOKEN = "https://oauth2.googleapis.com/token"
+
+
+async def g_post(url, data):
+    from aiohttp import ClientSession, ClientTimeout
+    async with ClientSession(timeout=ClientTimeout(total=20)) as http:
+        async with http.post(url, data=data) as r:
+            return await r.json(content_type=None)
+
+
+def yt_refresh_token():
+    try: return json.loads(YT_TOKEN.read_text()).get("refresh_token", "")
+    except Exception: return ""
+
+
+async def yt_status(req):
+    s = load_settings()
+    return web.json_response({"configured": bool(s.get("ytClientId") and s.get("ytClientSecret")),
+                              "signedIn": bool(yt_refresh_token()), "pending": YT["pending"], "error": YT["error"]})
+
+
+async def yt_login(req):
+    s = load_settings()
+    if not (s.get("ytClientId") and s.get("ytClientSecret")):
+        return web.json_response({"ok": False, "msg": "Add your Google client ID and secret first."})
+    if YT["task"] and not YT["task"].done(): YT["task"].cancel()
+    try:
+        j = await g_post("https://oauth2.googleapis.com/device/code",
+                         {"client_id": s["ytClientId"], "scope": "https://www.googleapis.com/auth/youtube.readonly"})
+    except Exception:
+        return web.json_response({"ok": False, "msg": "Couldn't reach Google. Check the Wi-Fi."})
+    if "user_code" not in j:
+        return web.json_response({"ok": False, "msg": j.get("error_description") or j.get("error") or "Google refused the request."})
+    YT.update(pending={"code": j["user_code"], "url": j.get("verification_url", "https://www.google.com/device")}, error="")
+    YT["task"] = asyncio.create_task(yt_poll(s, j))
+    await tv_send({"t": "ytcode", **YT["pending"]})
+    return web.json_response({"ok": True, **YT["pending"]})
+
+
+async def yt_poll(s, j):
+    end, wait = time.time() + int(j.get("expires_in", 1800)), int(j.get("interval", 5))
+    while time.time() < end:
+        await asyncio.sleep(wait)
+        try:
+            r = await g_post(G_TOKEN, {"client_id": s["ytClientId"], "client_secret": s["ytClientSecret"], "device_code": j["device_code"],
+                                       "grant_type": "urn:ietf:params:oauth:grant-type:device_code"})
+        except Exception:
+            continue
+        err = r.get("error")
+        if err == "authorization_pending": continue
+        if err == "slow_down": wait += 5; continue
+        YT["pending"] = None
+        if r.get("refresh_token"):
+            YT_TOKEN.write_text(json.dumps({"refresh_token": r["refresh_token"]})); os.chmod(YT_TOKEN, 0o600)
+            YT.update(access=r["access_token"], exp=time.time() + int(r.get("expires_in", 3600)) - 60, error="")
+            await tv_send({"t": "ytsigned"})
+        else:
+            YT["error"] = {"access_denied": "Sign-in was cancelled.", "expired_token": "The code expired. Try again."}.get(
+                err, r.get("error_description") or err or "Sign-in failed.")
+            await tv_send({"t": "ytcode", "code": ""})
+        return
+    YT.update(pending=None, error="The code expired. Try again.")
+    await tv_send({"t": "ytcode", "code": ""})
+
+
+async def yt_token(req):
+    # Only the TV itself may read the access token, not other devices on the Wi-Fi.
+    if req.remote not in ("127.0.0.1", "::1"): raise web.HTTPForbidden()
+    if YT["access"] and time.time() < YT["exp"] and not req.query.get("force"):
+        return web.json_response({"access_token": YT["access"]})
+    rt, s = yt_refresh_token(), load_settings()
+    if not rt: return web.json_response({})
+    try:
+        r = await g_post(G_TOKEN, {"client_id": s["ytClientId"], "client_secret": s["ytClientSecret"],
+                                   "refresh_token": rt, "grant_type": "refresh_token"})
+    except Exception:
+        return web.json_response({})
+    if "access_token" not in r:
+        if r.get("error") in ("invalid_grant", "invalid_client", "unauthorized_client"):
+            YT_TOKEN.unlink(missing_ok=True); YT["error"] = "Your YouTube sign-in ended. Please sign in again."
+        return web.json_response({})
+    YT.update(access=r["access_token"], exp=time.time() + int(r.get("expires_in", 3600)) - 60)
+    return web.json_response({"access_token": YT["access"]})
+
+
+async def yt_logout(req):
+    rt = yt_refresh_token()
+    YT_TOKEN.unlink(missing_ok=True); YT.update(access="", exp=0, pending=None, error="")
+    if YT["task"] and not YT["task"].done(): YT["task"].cancel()
+    if rt:
+        try: await g_post("https://oauth2.googleapis.com/revoke", {"token": rt})
+        except Exception: pass
+    await tv_send({"t": "ytsigned"})
+    return web.json_response({"ok": True})
+
+
+# ---------- YouTube watch history on this TV (Google doesn't share your real history with apps) ----------
+YT_HIST = DATA / "yt_history.json"
+
+
+def hist_load():
+    try: return json.loads(YT_HIST.read_text())
+    except Exception: return []
+
+
+async def yt_history(req): return web.json_response(hist_load())
+
+
+async def yt_history_add(req):
+    b = await req.json()
+    if not isinstance(b.get("id"), str) or not re.fullmatch(r"[\w-]{6,20}", b["id"]): raise web.HTTPBadRequest()
+    keep = ("id", "title", "channel", "channelId", "thumb", "dur", "cat", "pos", "len")
+    item = {k: b.get(k) for k in keep} | {"ts": time.time()}
+    h = [x for x in hist_load() if x.get("id") != item["id"]]
+    YT_HIST.write_text(json.dumps([item] + h[:199]))
+    return web.json_response({"ok": True})
+
+
+async def yt_history_clear(req):
+    YT_HIST.unlink(missing_ok=True); return web.json_response({"ok": True})
+
+
+# ---------- local music and videos ----------
+AUDIO = {".mp3", ".m4a", ".aac", ".flac", ".ogg", ".oga", ".opus", ".wav", ".weba"}
+VIDEO = {".mp4", ".m4v", ".webm", ".mkv", ".mov", ".ogv"}
+COVERS = ("cover.jpg", "cover.png", "folder.jpg", "folder.png", "front.jpg", "album.jpg")
+THUMBS = DATA / "thumbs"
+
+
+def media_roots(kind):
+    home = Path(pwd.getpwnam(USER).pw_dir) if USER else Path.home()
+    roots = [home / ("Music" if kind == "music" else "Videos"), DATA / kind]
+    media = Path("/media") / USER
+    if media.is_dir(): roots += [p for p in media.iterdir() if p.is_dir()]   # USB drives
+    return [r for r in roots if r.is_dir()]
+
+
+def media_scan(kind):
+    exts, out = (AUDIO if kind == "music" else VIDEO), []
+    for i, root in enumerate(media_roots(kind)):
+        for dp, dirs, files in os.walk(root):
+            dirs[:] = [d for d in dirs if not d.startswith(".")]
+            low = {f.lower(): f for f in files}
+            cover = next((low[c] for c in COVERS if c in low), "")
+            cover = f"{i}/{(Path(dp) / cover).relative_to(root).as_posix()}" if cover else ""
+            for f in files:
+                p = Path(dp) / f
+                if p.suffix.lower() not in exts or f.startswith("."): continue
+                rel = p.relative_to(root)
+                try: st = p.stat()
+                except OSError: continue
+                out.append({"path": f"{i}/{rel.as_posix()}", "name": p.stem, "folder": rel.parent.as_posix() if rel.parent.name else root.name,
+                            "size": st.st_size, "mtime": st.st_mtime, "cover": cover})
+            if len(out) > 5000: break
+    return sorted(out, key=lambda x: (x["folder"].lower(), x["name"].lower()))
+
+
+async def media_list(req):
+    kind = req.match_info["kind"]
+    if kind not in ("music", "videos"): raise web.HTTPNotFound()
+    files = await asyncio.to_thread(media_scan, kind)
+    return web.json_response({"files": files, "roots": [str(r) for r in media_roots(kind)]})
+
+
+def media_path(kind, rel):
+    """Turn "<root number>/<path>" into a real file, refusing anything outside the media folders."""
+    if kind not in ("music", "videos"): raise web.HTTPNotFound()
+    idx, _, sub = rel.partition("/")
+    roots = media_roots(kind)
+    if not idx.isdigit() or int(idx) >= len(roots): raise web.HTTPNotFound()
+    root = roots[int(idx)].resolve(); p = (root / sub).resolve()
+    if root not in p.parents or not p.is_file(): raise web.HTTPNotFound()
+    return p
+
+
+async def media_file(req):
+    p = media_path(req.match_info["kind"], req.match_info["path"])
+    if p.suffix.lower() not in (AUDIO | VIDEO | IMG): raise web.HTTPNotFound()
+    ct = mimetypes.guess_type(p.name)[0] or ("video/webm" if p.suffix.lower() == ".mkv" else "application/octet-stream")
+    return web.FileResponse(p, headers={"Content-Type": ct})
+
+
+async def media_thumb(req):
+    """A still frame from a video, made once with ffmpeg and kept in data/thumbs."""
+    import hashlib
+    p = media_path("videos", req.match_info["path"])
+    st = p.stat(); THUMBS.mkdir(parents=True, exist_ok=True)
+    out = THUMBS / (hashlib.sha1(f"{p}:{st.st_mtime}".encode()).hexdigest()[:20] + ".jpg")
+    if not out.exists():
+        for at in ("00:00:20", "00:00:02", "00:00:00"):
+            rc, _ = await run("ffmpeg", "-y", "-loglevel", "error", "-ss", at, "-i", str(p), "-frames:v", "1",
+                              "-vf", "scale=480:-2", str(out), timeout=40, code=True)
+            if out.exists() and out.stat().st_size: break
+    if not out.exists() or not out.stat().st_size: raise web.HTTPNotFound()
+    return web.FileResponse(out, headers={"Content-Type": "image/jpeg", "Cache-Control": "max-age=604800"})
+
+
+async def media_upload(req):
+    """Phone uploads go to ~/Music or ~/Videos on the Pi."""
+    kind = req.match_info["kind"]
+    if kind not in ("music", "videos"): raise web.HTTPNotFound()
+    pw = pwd.getpwnam(USER); dest = Path(pw.pw_dir) / ("Music" if kind == "music" else "Videos")
+    dest.mkdir(parents=True, exist_ok=True); os.chown(dest, pw.pw_uid, pw.pw_gid)
+    names, reader = [], await req.multipart()
+    while (field := await reader.next()) is not None:
+        name = re.sub(r"[^\w .()&,'-]", "_", Path(field.filename or "file").name).strip() or "file"
+        if Path(name).suffix.lower() not in (AUDIO if kind == "music" else VIDEO): continue
+        with open(dest / name, "wb") as f:
+            while chunk := await field.read_chunk(): f.write(chunk)
+        os.chown(dest / name, pw.pw_uid, pw.pw_gid); names.append(name)
+    return web.json_response({"saved": names})
+
+
 async def ws_handler(req):
     ws = web.WebSocketResponse(heartbeat=20); await ws.prepare(req)
     is_tv = req.query.get("tv") == "1"
@@ -378,14 +619,23 @@ async def ws_handler(req):
                 m = json.loads(msg.data)
                 if m.get("t") == "search":
                     q = str(m.get("q", "")).strip()[:200]
-                    for tv in list(TV_SOCKETS):
-                        await tv.send_json({"t": "search", "q": q})
+                    if not TV_SOCKETS: await open_on_tv("/")
+                    await tv_send({"t": "search", "q": q})
                     await ws.send_json({"t": "note", "msg": "Searching on TV…" if TV_SOCKETS else "Go to the Lumen home screen on the TV first."})
+                elif m.get("t") == "login":
+                    a = find_app(m.get("app"))
+                    url = a and (a.get("url") if a.get("codeLogin") and not m.get("web") else a.get("login"))
+                    ok = bool(url) and await open_on_tv(url)
+                    await ws.send_json({"t": "note", "msg": f"Opening {a['name']} on the TV…" if ok else "Couldn't reach the TV. Is Lumen open?"})
+                elif m.get("t") == "open":
+                    a = find_app(m.get("app"))
+                    ok = bool(a) and await open_on_tv(a["url"])
+                    await ws.send_json({"t": "note", "msg": f"Opening {a['name']}…" if ok else "Couldn't reach the TV."})
                 elif m.get("t") == "vol":
                     await asyncio.to_thread(handle, m)
                     level, muted = await asyncio.to_thread(get_volume)
                     if TV_SOCKETS:
-                        for tv in list(TV_SOCKETS): await tv.send_json({"t": "vol", "v": level, "muted": muted})
+                        await tv_send({"t": "vol", "v": level, "muted": muted})
                     else:
                         wob(0 if muted else level)
                 else: handle(m)
@@ -397,7 +647,7 @@ async def ws_handler(req):
 
 
 async def main_app():
-    app = web.Application(client_max_size=50 * 1024 ** 2, middlewares=[no_cache])
+    app = web.Application(client_max_size=8 * 1024 ** 3, middlewares=[no_cache])
     r = app.router
     r.add_get("/", index)
     r.add_get("/tv", await page("index.html"))
@@ -409,6 +659,12 @@ async def main_app():
     r.add_get("/api/bt", bt_list); r.add_post("/api/bt/scan", bt_scan); r.add_post("/api/bt/action", bt_action)
     r.add_post("/api/power", power)
     r.add_post("/api/update", update); r.add_get("/api/update", update_status)
+    r.add_get("/api/yt/status", yt_status); r.add_post("/api/yt/login", yt_login)
+    r.add_get("/api/yt/token", yt_token); r.add_post("/api/yt/logout", yt_logout)
+    r.add_get("/api/yt/history", yt_history); r.add_post("/api/yt/history", yt_history_add)
+    r.add_post("/api/yt/history/clear", yt_history_clear)
+    r.add_get("/api/media/{kind}", media_list); r.add_get("/media/{kind}/{path:.+}", media_file)
+    r.add_get("/thumb/{path:.+}", media_thumb); r.add_post("/api/media/{kind}/upload", media_upload)
     r.add_get("/api/wifi", wifi_list); r.add_post("/api/wifi/scan", wifi_scan)
     r.add_post("/api/wifi/connect", wifi_connect); r.add_post("/api/wifi/forget", wifi_forget)
     r.add_static("/s/", WEB); r.add_static("/wallpapers/", WALL)
